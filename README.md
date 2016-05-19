@@ -1,0 +1,58 @@
+# 5511emu #
+
+This is an IBM JX emulator.
+
+## Environment ##
+
+* GNU/Linux
+* SDL
+
+## ROM images ##
+
+This program loads following ROM image files from current working directory.
+
+* BASE_E.ROM : E0000h-EFFFFh
+* BASE_F.ROM : F0000h-FFFFFh
+* FONT_8.ROM : Font ROM 80000h-8FFFFh
+* FONT_9.ROM : Font ROM 90000h-9FFFFh
+* FONT_A.ROM : Font ROM A0000h-AFFFFh
+* FONT_B.ROM : Font ROM B0000h-BFFFFh
+
+This program loads following ROM image files if -j option is specified.
+
+* PCJR_D.ROM : PCjr cartridge D0000h-DFFFFh
+* PCJR_E.ROM : PCjr cartridge E0000h-EFFFFh
+* PCJR_F.ROM : PCjr cartridge F0000h-FFFFFh
+
+## Floppy disk images ##
+
+Raw image is supported.
+
+1024 byte sectors are optionally accessible to support copy protection. You need following files:
+
+* File name: ("%s.%03d", original_image_name, (cylinder * 2 + head)) in printf format
+* Contents: raw image of 1024 byte sectors in that track (cylinder and head)
+
+For example, the original image name is "King's Quest.FDD" and cylinder 0 head 1 contains 5 1024-byte-sectors, the 5120 byte data will be loaded from file "King's Quest.FDD.001".
+
+## Build ##
+
+Run make command on GNU/Linux environment.
+
+## Run ##
+
+Run 5511emu.
+
+```
+#!sh
+
+./5511emu [-j] [A drive image [B drive image [C drive image [D drive image]]]]
+```
+
+## Limitations ##
+
+* Floppy disk images cannot be changed while the emulator is running.
+* Extended (Kakucho-hyoji) mode is not supported.
+* JX-5 7.2MHz mode is not supported.
+* Border color is not displayed.
+* There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
