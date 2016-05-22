@@ -1,0 +1,236 @@
+; Copyright (C) 1997 Hideki EIRAKU
+; JX のメモリを全部ディスクに書き出すための IPL
+; .BIN 形式で出力し, デバッガなどで 2DD フォーマットディスクに書き込む.
+; 7C00H から 2 セクタにわたって書き込むこと.
+; あとは JX で起動する
+
+TEXT	CSEG
+	RS	7C00H
+
+START:
+	JMP	MAIN
+	NOP
+	DB	'IBMJ'	; これがないと JX の BIOS がシステムディスケットと
+			; 認識しない
+ERROR:	PUSH	AX
+	CALL	MES
+	DB	'ACCESS ERROR CODE: %',0
+	JMP	$
+MES:	; 文字列表示
+; 使い方
+;	PUSH	....	; 表示する数値があればスタックに積む
+;	CALL	MES
+;	DB	'STRING LENGTH: %',13,10,0
+;	CALL のあとに文字列を定義する. 最後は 0. 表示する数値は自動的にスタック
+;	から取り出された状態でリターンする. 表示には BIOS がサポートしている
+;	テレタイプ式書き込みを使用している.
+;	% があれば, それはスタックから取り出した数値を 4 桁の 16 進数に変換した
+;	ものと置き換えられて表示される.
+;	使用するレジスタ: AX, BX, SI
+	POP	SI
+MES_2:	LODSB
+	OR	AL,AL
+	JE	MES_1
+	CMP	AL,'%'
+	JE	MES_3
+	MOV	AH,0EH
+	INT	10H
+	JMP	MES_2
+MES_1:	JMP	SI
+MES_3:	POP	BX
+	PUSH	CX
+	MOV	CX,4
+MES_5:	ROL	BX,4
+	MOV	AX,BX
+	AND	AL,0FH
+	ADD	AL,'0'
+	CMP	AL,'9'
+	JBE	MES_4
+	ADD	AL,'A'-'9'-1
+MES_4:	MOV	AH,0EH
+	INT	10H
+	LOOP	MES_5
+	POP	CX
+	JMP	MES_2
+
+MAIN:	MOV	AX,CS
+	MOV	DS,AX
+	MOV	ES,AX
+	MOV	SS,AX
+	MOV	SP,0FFFEH
+	CLD		; IPL 内では普通ディレクションフラグをクリアしておく
+	OR	AX,AX
+	JE	CSOK
+	CALL	IPCHK
+IPCHK:	PUSH	CS
+	CALL	MES
+	DB	'CS:% IP:% 続けるなら何かキーを押してください.',13,10,0
+	MOV	AH,0
+	INT	16H
+	DB	0EAH
+	DW	7C00H
+	DW	0
+CSOK:
+	CALL	MES
+	DB	'メモリ書き込みプログラムの続きを読み込みます.',13,10,0
+	MOV	CX,1
+	MOV	DX,40H
+	MOV	BX,7C00H
+	MOV	AX,202H
+	INT	13H
+	JC	ERROR
+	CALL	MES
+	DB	'メモリ中のデータの連続度をチェックします.',13,10,0
+	MOV	BP,START
+	XOR	DX,DX
+
+_4:	MOV	ES,DX
+	XOR	DI,DI
+	MOV	AL,ES:[DI]
+	INC	DI
+	PUSH	AX
+	MOV	AH,0
+	PUSH	AX
+	PUSH	DX
+	CALL	MES
+	DB	'SEGMENT: %h  DATA: %h  連続していま',0
+	CALL	KJROMON
+	POP	AX
+	MOV	DS:[BP+16],AL
+	MOV	CX,0FFFFH
+	REPE	SCASB
+	LAHF
+	CALL	KJROMOFF
+	SAHF
+	MOV	AL,0FFH
+	JE	_1
+	XOR	AL,AL
+_1:	MOV	DS:[BP],AL
+	INC	BP
+	SAHF
+	JE	_2
+	CALL	MES
+	DB	'せんで',0
+_2:	CALL	MES
+	DB	'した.',13,10,0
+_3:	ADD	DX,1000H
+	JNE	_4
+
+	CALL	MES
+	DB	'ディスケットドライブ 720KB FDD A への書き込みを開始します.',13,10
+	DB	'何かキーを押してください.',13,10,0
+
+	MOV	AH,0
+	INT	16H
+
+	CALL	MES
+	DB	'メモリ状況の書き込み',13,10,0
+
+	MOV	AX,CS
+	MOV	ES,AX		; IPL
+	MOV	BX,START	;
+	MOV	CX,3		; TRACK=0 SECTOR=3
+	MOV	DX,40H		; 80 TRACK DISKETTE ACCESS, DRIVE NUMBER=0
+	MOV	AX,0301H	; 1 SECTOR WRITE
+	INT	13H
+	JC	ERROR
+
+	CALL	MES
+	DB	'メモリの書き込み',13,10,0
+
+	XOR	DI,DI		; START SEGMENT
+	MOV	CX,4		; START TRACK NUMBER AND SECTOR NUMBER
+	MOV	DX,40H		; DRIVE NUMBER
+_6:	PUSH	DI
+	CALL	MES
+	DB	'%h',13,10,0
+	CALL	WRITESEGMENT
+	ADD	DI,1000H
+	JNE	_6
+
+	CALL	MES
+	DB	'完了しました. ディスケットを抜いて, 再起動するか, 電源を切ってください.',13,10,0
+	STI
+	JMP	$
+
+WRITESEGMENT:
+	MOV	BX,DI
+	ROL	BX,4
+	CMP	[START+BX].B,0
+	JE	WS_1
+	CALL	MES
+	DB	'スキップ',13,10,0
+	RET
+WS_1:	MOV	ES,DI		; LOAD BUFFER ADDRESS
+	XOR	BX,BX		;
+WS_3:	PUSH	BX
+
+	PUSH	DX
+	PUSH	CX
+	PUSH	BX
+	PUSH	ES
+	CALL	MES
+	DB	'ES:% BX:% CX:% DX:%',13,0
+	CALL	KJROMON
+
+	POP	BX
+	MOV	AX,301H
+	INT	13H
+	PUSHF
+	PUSH	BX
+	CALL	KJROMOFF
+	POP	BX
+	POPF
+	JC	ERROR
+	INC	CL		; CL=SECTOR NUMBER
+	CMP	CL,10
+	JNE	WS_2
+	MOV	CL,1
+	XOR	DH,1		; DH=HEAD NUMBER
+	JNE	WS_2
+	INC	CH		; CH=TRACK NUMBER
+	CMP	CH,80
+	JNE	WS_2
+	CALL	MES
+	DB	'DISK FULL. UPDATE IPL.',0
+	JMP	$
+WS_2:	ADD	BX,512
+	JNE	WS_3
+	RET
+
+OUT_GA:	IN	AL,DX
+	MOV	AL,BH
+	OUT	DX,AL
+	MOV	AL,BL
+	OUT	DX,AL
+	RET
+
+; * AH は破壊しません.
+KJROMON:
+	PUSH	DX
+	CLI
+	MOV	DX,1FFH
+	MOV	BX,937H
+	CALL	OUT_GA
+	MOV	BX,0A37H
+	CALL	OUT_GA
+	MOV	BX,7B0H
+	CALL	OUT_GA
+	STI
+	POP	DX
+	RET
+
+KJROMOFF:
+	PUSH	DX
+	CLI
+	MOV	DX,1FFH
+	MOV	BX,730H
+	CALL	OUT_GA
+	MOV	BX,0AB7H
+	CALL	OUT_GA
+	STI
+	POP	DX
+	RET
+
+	END
+

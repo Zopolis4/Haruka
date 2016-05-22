@@ -1,0 +1,34 @@
+Memory Dump Program for IBM JX
+
+Files in this directory is under MIT license.
+
+
+* jxfntdmp.s - Font ROM dump program for JX
+
+This program is for DOS on JX.  It saves font ROM to a file named
+font.dat.  It is expected to work properly, but not tested on real JX
+machine.
+
+See the source code about how to build.
+
+
+* jxipl.a86
+
+This program is a boot program for JX.  It saves whole memory to a
+diskette.
+
+Use r86 assembler in LSI C-86 to assemble.  To make a bootable
+diskette, format 2DD 720KB diskette and write the binary to start of
+the diskette.  2 sectors are needed.
+
+The program contains Japanese comments and messages.  The source file
+encoding is Shift_JIS.
+
+If the program was executed successfully, LBA 2 (track 0 sector 3)
+contains memory usage - 16-byte data, 00h means unused block, ffh
+means used block, for every 64KiB-block, i.e. the first byte is for
+00000h-0ffffh, the second byte is for 10000h-1ffffh, and so on.
+Unused block means the block is filled with the value of the first
+byte in the block.  From LBA 3, every 64KiB used block is stored.
+
+This program worked on JX-5.
