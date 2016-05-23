@@ -1,0 +1,17 @@
+Diskette Dump Program
+
+Files in this directory is under MIT license.
+
+
+* fddimg98.a86 - 2DD diskette dump program for NEC PC-98 series
+
+This program is for MS-DOS on NEC PC-98 series, NOT for IBM PC
+compatible computers.  It reads 512-byte sectors data from first
+floppy disk drive and writes the data to a file named temp.fdd.
+1024-byte sectors are saved to files named temp.### while ### is
+(cylinder * 2 + head) in decimal.
+
+Use r86 assembler in LSI C-86 to assemble.
+
+The program contains Japanese comments and messages.  The source file
+encoding is Shift_JIS.
