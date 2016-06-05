@@ -1,0 +1,11 @@
+Fix Font Program
+
+
+* fixjrfnt.s - Fix PCjr Font Program for DOS
+
+This program reads font from the video BIOS and writes 8x8 font
+(except Japanese font) to FONT_8.ROM.
+
+If you could not extract font ROM from JX, you can fill the font used
+by PCjr emulation mode with this program.  This program is tested on
+QEMU and dosemu.
