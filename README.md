@@ -56,3 +56,10 @@ Run 5511emu.
 * JX-5 7.2MHz mode is not supported.
 * Border color is not displayed.
 * There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
+* Superfast and quiet diskette drives.
+* CG1 (Character Generator 1) uses CG2 fonts, because CG1 ROM is not readable from CPU and ROM reader is needed to create CG1 ROM image file.
+* Cassette and parallel port are not supported. Startup BIOS tests of them fail and "ERROR C J" is displayed. Press return key to continue booting.
+* Serial port emulation is not implemented. No error is reported by BIOS since it is an expansion card on JX.
+* BIOS continues booting when a kj-rom checksum test fails because HLT instruction is not properly emulated.
+* Joystick is emulated but not controllable.
+* Application cartridge support is not yet implemented.
