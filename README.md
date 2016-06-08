@@ -46,8 +46,13 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-j] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
+
+### Options ###
+
+* -w: warm boot
+* -j: PCjr cartridge
 
 ## Limitations ##
 
@@ -58,7 +63,8 @@ Run 5511emu.
 * There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
 * Superfast and quiet diskette drives.
 * CG1 (Character Generator 1) uses CG2 fonts, because CG1 ROM is not readable from CPU and ROM reader is needed to create CG1 ROM image file.
-* Cassette and parallel port are not supported. Startup BIOS tests of them fail and "ERROR C J" is displayed. Press return key to continue booting.
+* Cassette and parallel port are not supported. Startup BIOS tests of them fail and "ERROR C J" or "ERROR C J H" is displayed. Press return key to continue booting.
+* "ERROR H" is diskette error. The error is not displayed on warm boot. Probably there is a bug in diskette controller emulation.
 * Serial port emulation is not implemented. No error is reported by BIOS since it is an expansion card on JX.
 * BIOS continues booting when a kj-rom checksum test fails because HLT instruction is not properly emulated.
 * Joystick is emulated but not controllable.

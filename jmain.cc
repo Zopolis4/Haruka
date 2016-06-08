@@ -47,6 +47,7 @@ struct threaddata
   int resetflag;
   stdfdc *fdc;
   bool pcjrflag;
+  bool warmflag;
 };
 
 threaddata mainthreaddata;
@@ -176,8 +177,11 @@ mainthreadplus (void *p)
 		    }
 		  //jio.memw (0x473, 0x12); // for warm start
 		  //jio.memw (0x472, 0x34);
-		  mainram.write (0x473, 0x12);
-		  mainram.write (0x472, 0x34);
+		  if (mainthreaddata.warmflag)
+		    {
+		      mainram.write (0x473, 0x12);
+		      mainram.write (0x472, 0x34);
+		    }
 		  cartrom.clearrom ();
 		  jio.setpcjrmode (false);
 		  if (mainthreaddata.pcjrflag)
@@ -424,12 +428,15 @@ main (int argc, char **argv)
   mainthreaddata.resetflag = 1;
   mainthreaddata.fdc = 0;
   mainthreaddata.pcjrflag = false;
+  mainthreaddata.warmflag = false;
   for (i = 0; i < 4; i++)
     md.fdfile[i] = NULL;
   for (i = 1, j = 0; i < argc; i++)
     {
       if (strcmp (argv[i], "-j") == 0)
 	mainthreaddata.pcjrflag = true;
+      else if (strcmp (argv[i], "-w") == 0)
+	mainthreaddata.warmflag = true;
       else if (j < 4)
 	md.fdfile[j++] = argv[i];
     }
