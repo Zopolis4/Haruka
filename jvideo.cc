@@ -90,8 +90,11 @@ jvideo::clk (int clockcount, bool drawflag)
   // 912*231-68 ... 912*262  dummy
   vsynccount += clockcount;
   cursorcount += clockcount;
+  blinkcount += clockcount;
   while (cursorcount >= (14318180 / 4))
     cursorcount -= (14318180 / 4);
+  while (blinkcount >= (14318180 / 2))
+    blinkcount -= (14318180 / 2);
   if (vsynccount > 912 * 262)
     {
       vsynccount -= 912 * 262, dat3da |= 8, vsyncintflag = 1,
@@ -333,8 +336,15 @@ jvideo::convsub (unsigned char *p, int vp)
 		{
 		  d1 = readmem->read (k & maskdat);
 		  d2 = readmem->read ((k + 1) & maskdat);
-		  bg = (d2 / 16) % 8;
-		  fg = d2 % 8;
+		  bg = (d2 / 16) % 16;
+		  fg = d2 % 16;
+		  if (mode2[vp] & 2) // Blinking enabled
+		    {
+		      bg %= 8;
+		      // FIXME: blink rate and timing
+		      if ((d2 & 0x80) && blinkcount < (14318180 / 4))
+			fg = bg;
+		    }
 		  addr = (d1 << 5) + 1 + (vp ? 0 : 16);
 		  if (vp)
 		    {
@@ -758,6 +768,7 @@ jvideo::jvideo (SDL_Surface *surface, jmem *program,
   vram = new jmem (65536);
   vsynccount = 0;
   cursorcount = 0;
+  blinkcount = 0;
   vsyncintflag = 0;
   dat3da = 0;
   flag3da[0] = flag3da[1] = 0;

@@ -47,6 +47,7 @@ private:
   jmem *vram;			// 32KB VRAM + 32KB VRAM
   jmem *kanjirom;
   int vsynccount, cursorcount;
+  int blinkcount;
   int vsyncintflag;
   t16 dat3da;
   unsigned char v3da;
