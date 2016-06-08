@@ -48,6 +48,7 @@ struct threaddata
   stdfdc *fdc;
   bool pcjrflag;
   bool warmflag;
+  bool origpcjrflag;
 };
 
 threaddata mainthreaddata;
@@ -126,12 +127,34 @@ mainthreadplus (void *p)
   sdlsound soundclass (11025, 1024 * 4);
   int clk, clk2;
 
-  systemrom.loadrom (0, "BASE_E.ROM", 65536);
-  systemrom.loadrom (65536, "BASE_F.ROM", 65536);
-  kanjirom.loadrom (65536 * 0, "FONT_8.ROM", 65536);
-  kanjirom.loadrom (65536 * 1, "FONT_9.ROM", 65536);
-  kanjirom.loadrom (65536 * 2, "FONT_A.ROM", 65536);
-  kanjirom.loadrom (65536 * 3, "FONT_B.ROM", 65536);
+  if (mainthreaddata.origpcjrflag)
+    {
+      systemrom.loadrom (65536, "bios.rom", 65536);
+      // Extract font from the BIOS
+      int i;
+      for (i = 0; i < 128; i++)
+	{
+	  int j;
+	  for (j = 0; j < 8; j++)
+	    {
+	      // Code 128-255 from F000:E05E-
+	      kanjirom.write (i * 32 + j * 2 + 0x1011,
+			      systemrom.read (0x1e05e + i * 8 + j));
+	      // Code 0-127 from F000:FA6E-
+	      kanjirom.write (i * 32 + j * 2 + 0x11,
+			      systemrom.read (0x1fa6e + i * 8 + j));
+	    }
+	}
+    }
+  else
+    {
+      systemrom.loadrom (0, "BASE_E.ROM", 65536);
+      systemrom.loadrom (65536, "BASE_F.ROM", 65536);
+      kanjirom.loadrom (65536 * 0, "FONT_8.ROM", 65536);
+      kanjirom.loadrom (65536 * 1, "FONT_9.ROM", 65536);
+      kanjirom.loadrom (65536 * 2, "FONT_A.ROM", 65536);
+      kanjirom.loadrom (65536 * 3, "FONT_B.ROM", 65536);
+    }
 
   {
     jvideo videoclass (surface, &program, &kanjirom);
@@ -189,6 +212,44 @@ mainthreadplus (void *p)
 		      cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
 		      cartrom.loadrom (65536 * 2, "PCJR_F.ROM", 65536);
 		      jio.setpcjrmode (true);
+		    }
+		  if (mainthreaddata.origpcjrflag)
+		    {
+		      // Set up memory and I/O space for PCjr BIOS
+		      jio.out (0x1ff, 0x08); // Main RAM
+		      jio.out (0x1ff, 0xa0); // 00000-1FFFF
+		      jio.out (0x1ff, 0x63); // RW, Mask
+		      jio.out (0x1ff, 0x09); // VRAM1
+		      jio.out (0x1ff, 0xf7); // B8000-BFFFF
+		      jio.out (0x1ff, 0x60); // RW, Mask
+		      for (i = 0x80; i < 0x93; i++)
+			{
+			  jio.out (0x1ff, i); // I/O
+			  switch (i)
+			    {
+			    case 0x8d:		     // GA2B
+			    case 0x8e:		     // GA03
+			    case 0x90:		     // PG2
+			      jio.out (0x1ff, 0x00); // Disable
+			      jio.out (0x1ff, 0x00);
+			      break;
+			    case 0x85:		     // FDC
+			      jio.out (0x1ff, 0x9e); // 00F0-00FF
+			      jio.out (0x1ff, 0x01);
+			      break;
+			    default:
+			      jio.out (0x1ff, 0x80); // Enable
+			      jio.out (0x1ff, 0x00);
+			    }
+			}
+		      videoclass.in3da (true);
+		      videoclass.out3da (true, 3); // Mode control 2
+		      videoclass.out3da (true, 0x10); // Set PCjr memory map
+		      if (mainthreaddata.warmflag)
+			{
+			  program.write (0x473, 0x12);
+			  program.write (0x472, 0x34);
+			}
 		    }
 		}
 #if 0
@@ -429,6 +490,7 @@ main (int argc, char **argv)
   mainthreaddata.fdc = 0;
   mainthreaddata.pcjrflag = false;
   mainthreaddata.warmflag = false;
+  mainthreaddata.origpcjrflag = false;
   for (i = 0; i < 4; i++)
     md.fdfile[i] = NULL;
   for (i = 1, j = 0; i < argc; i++)
@@ -437,6 +499,8 @@ main (int argc, char **argv)
 	mainthreaddata.pcjrflag = true;
       else if (strcmp (argv[i], "-w") == 0)
 	mainthreaddata.warmflag = true;
+      else if (strcmp (argv[i], "-o") == 0)
+	mainthreaddata.origpcjrflag = true;
       else if (j < 4)
 	md.fdfile[j++] = argv[i];
     }

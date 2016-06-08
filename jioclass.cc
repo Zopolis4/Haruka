@@ -492,7 +492,8 @@ jioclass::out (t16 n, t16 v)
     {
       if (n == 0x10 && v == 0xf1)
 	;//allowdisplay = 1;
-      if (n == 0x10 && v == 0xf0)
+      if (n == 0x10 && v == 0xff)
+	// Workaround for BIOS POST which accesses the joystick port
 	joyb = 0xf0;
 #define z(a,b) case 0x##a: fprintf (stderr, "MFG: %s\n", b); break
       if (n == 0x10)

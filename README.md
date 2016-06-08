@@ -2,12 +2,14 @@
 
 This is an IBM JX emulator.
 
+Default is JX mode which is for Japanese JX emulation. Original PCjr mode is expected to be similar to JX of Australian and New Zealand models.
+
 ## Environment ##
 
 * GNU/Linux
 * SDL
 
-## ROM images ##
+## ROM Images (JX Mode, Japanese) ##
 
 This program loads following ROM image files from current working directory.
 
@@ -23,6 +25,12 @@ This program loads following ROM image files if -j option is specified.
 * PCJR_D.ROM : PCjr cartridge D0000h-DFFFFh
 * PCJR_E.ROM : PCjr cartridge E0000h-EFFFFh
 * PCJR_F.ROM : PCjr cartridge F0000h-FFFFFh
+
+## ROM Image (Original PCjr Mode) ##
+
+This program loads the following ROM image file from current working directory in original PCjr mode.
+
+* bios.rom : F0000h-FFFFFh
 
 ## Floppy disk images ##
 
@@ -46,13 +54,14 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-w] [-j] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [-o] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options ###
 
 * -w: warm boot
 * -j: PCjr cartridge
+* -o: Original PCjr mode
 
 ## Limitations ##
 
@@ -65,7 +74,7 @@ Run 5511emu.
 * CG1 (Character Generator 1) uses CG2 fonts, because CG1 ROM is not readable from CPU and ROM reader is needed to create CG1 ROM image file.
 * Cassette and parallel port are not supported. Startup BIOS tests of them fail and "ERROR C J" or "ERROR C J H" is displayed. Press return key to continue booting.
 * "ERROR H" is diskette error. The error is not displayed on warm boot. Probably there is a bug in diskette controller emulation.
-* Serial port emulation is not implemented. No error is reported by BIOS since it is an expansion card on JX.
+* Serial port emulation is not implemented. No error is reported by BIOS since it is an expansion card on JX. In original PCjr mode the BIOS may report an error.
 * BIOS continues booting when a kj-rom checksum test fails because HLT instruction is not properly emulated.
 * Joystick is emulated but not controllable.
 * Application cartridge support is not yet implemented.
