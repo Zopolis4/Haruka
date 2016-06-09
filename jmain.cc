@@ -49,6 +49,7 @@ struct threaddata
   bool pcjrflag;
   bool warmflag;
   bool origpcjrflag;
+  char *cart[6];		// D0, D8, E0, E8, F0, F8
 };
 
 threaddata mainthreaddata;
@@ -123,6 +124,7 @@ mainthreadplus (void *p)
   jmem mainram (384 * 1024);	// extended 128KB x 3
   jmem program (128 * 1024);	// base 64KB + extended 64KB
   jmem cartrom (192 * 1024);	// D0000-FFFFF
+  bool cart_exist[6] = { false, false, false, false, false, false };
   try{
   sdlsound soundclass (11025, 1024 * 4);
   int clk, clk2;
@@ -208,6 +210,29 @@ mainthreadplus (void *p)
 		  cartrom.clearrom ();
 		  jio.set_base1_rom (false);
 		  jio.set_base2_rom (false);
+		  for (i = 0 ; i < 6 ; i++)
+		    {
+		      if (mainthreaddata.cart[i])
+			{
+			  int remain = 192 * 1024 - i * 32768;
+			  if (remain > 96 * 1024) // Cartridge max 96KB
+			    remain = 96 * 1024;
+			  int size = cartrom.loadrom2 (i * 32768,
+						       mainthreaddata.cart[i],
+						       remain);
+			  cart_exist[i] = true;
+			  if (size > 32768 * 1 && i + 1 < 6)
+			    i++;
+			  cart_exist[i] = true;
+			  if (size > 32768 * 2 && i + 1 < 6)
+			    i++;
+			  cart_exist[i] = true;
+			}
+		    }
+		  if (cart_exist[4])
+		    jio.set_base2_rom (true);
+		  if (cart_exist[5])
+		    jio.set_base1_rom (true);
 		  if (mainthreaddata.pcjrflag)
 		    {
 		      cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
@@ -241,6 +266,37 @@ mainthreadplus (void *p)
 			      break;
 			    default:
 			      jio.out (0x1ff, 0x80); // Enable
+			      jio.out (0x1ff, 0x00);
+			    }
+			}
+		      // Activate cartridge ROMs
+		      jio.out (0x1ff, 0);    // System ROM
+		      if (cart_exist[5])     // Cartridge in F8000-FFFFF
+			{
+			  jio.out (0x1ff, 0x00); // Disabled
+			  jio.out (0x1ff, 0x00);
+			}
+		      else if (cart_exist[4]) // Cartridge in F0000-F7FFF
+			{
+			  jio.out (0x1ff, 0xbf); // F8000-FFFFF
+			  jio.out (0x1ff, 0x20); //
+			}
+		      else
+			{
+			  jio.out (0x1ff, 0xbe); // F0000-FFFFF
+			  jio.out (0x1ff, 0x21); //
+			}
+		      for (i = 0; i < 6; i++)
+			{
+			  jio.out (0x1ff, i + 1); // Cartridge ROM
+			  if (cart_exist[i])
+			    {
+			      jio.out (0x1ff, 0xba + i); // Enabled
+			      jio.out (0x1ff, 0x20);
+			    }
+			  else
+			    {
+			      jio.out (0x1ff, 0x00); // Disabled
 			      jio.out (0x1ff, 0x00);
 			    }
 			}
@@ -493,6 +549,8 @@ main (int argc, char **argv)
   mainthreaddata.pcjrflag = false;
   mainthreaddata.warmflag = false;
   mainthreaddata.origpcjrflag = false;
+  for (i = 0; i < 6; i++)
+  mainthreaddata.cart[i] = NULL;
   for (i = 0; i < 4; i++)
     md.fdfile[i] = NULL;
   for (i = 1, j = 0; i < argc; i++)
@@ -503,6 +561,18 @@ main (int argc, char **argv)
 	mainthreaddata.warmflag = true;
       else if (strcmp (argv[i], "-o") == 0)
 	mainthreaddata.origpcjrflag = true;
+      else if (strcmp (argv[i], "-d0") == 0 && i + 1 < argc)
+	mainthreaddata.cart[0] = argv[++i];
+      else if (strcmp (argv[i], "-d8") == 0 && i + 1 < argc)
+	mainthreaddata.cart[1] = argv[++i];
+      else if (strcmp (argv[i], "-e0") == 0 && i + 1 < argc)
+	mainthreaddata.cart[2] = argv[++i];
+      else if (strcmp (argv[i], "-e8") == 0 && i + 1 < argc)
+	mainthreaddata.cart[3] = argv[++i];
+      else if (strcmp (argv[i], "-f0") == 0 && i + 1 < argc)
+	mainthreaddata.cart[4] = argv[++i];
+      else if (strcmp (argv[i], "-f8") == 0 && i + 1 < argc)
+	mainthreaddata.cart[5] = argv[++i];
       else if (j < 4)
 	md.fdfile[j++] = argv[i];
     }

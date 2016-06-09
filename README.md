@@ -32,6 +32,19 @@ This program loads the following ROM image file from current working directory i
 
 * bios.rom : F0000h-FFFFFh
 
+## ROM Image (Cartridges) ##
+
+Cartridge ROM image can be loaded with -d0, -d8, -e0, -e8, -f0 or -f8 option. The option name means starting address:
+
+* -d0 for D0000h, application
+* -d8 for D8000h, application
+* -e0 for E0000h, application for PCjr
+* -e8 for E8000h, application for PCjr
+* -f0 for F0000h, system
+* -f8 for F8000h, system
+
+Maximum ROM image size is 96KiB.
+
 ## Floppy disk images ##
 
 Raw image is supported.
@@ -54,7 +67,7 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-w] [-j] [-o] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [-o] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options ###
@@ -62,6 +75,12 @@ Run 5511emu.
 * -w: warm boot
 * -j: PCjr cartridge
 * -o: Original PCjr mode
+* -d0 cartridge-d0: Load cartridge image from address D0000h
+* -d8 cartridge-d8: Load cartridge image from address D8000h
+* -e0 cartridge-e0: Load cartridge image from address E0000h
+* -e8 cartridge-e8: Load cartridge image from address E8000h
+* -f0 cartridge-f0: Load cartridge image from address F0000h
+* -f8 cartridge-f8: Load cartridge image from address F8000h
 
 ## Limitations ##
 
