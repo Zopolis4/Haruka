@@ -48,7 +48,7 @@ private:
   jkey *kbd;
   jmem *cartrom;
   jfdc *fdc;
-  bool pcjrmode;
+  bool base1_rom, base2_rom;
 
   int joyx, joyy, joyb;
   int status1ff;
@@ -77,6 +77,6 @@ public:
   void memw (unsigned long addr, t16 v);
   t16 in (t16 n);
   void out (t16 n, t16 v);
-  inline void setpcjrmode (bool d) { pcjrmode = d; }
+  inline void set_base1_rom (bool d) { base1_rom = d; }
+  inline void set_base2_rom (bool d) { base2_rom = d; }
 };
-

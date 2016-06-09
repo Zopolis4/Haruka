@@ -92,7 +92,8 @@ jioclass::jioclass (jvideo *d2, sdlsound *d3,
   timerintflag = 0;
   cartrom = cart;
   fdc = dsk;
-  pcjrmode = false;
+  base1_rom = false;
+  base2_rom = false;
 }
 
 t16
@@ -335,7 +336,7 @@ jioclass::in (t16 n)
   if (n == 0x1ff)
     {
       status1ff = 0;
-      return 255 ^ (pcjrmode ? 32 : 0);
+      return 255 ^ (base1_rom ? 32 : 0) ^ (base2_rom ? 64 : 0);
     }
   return 0;
 }

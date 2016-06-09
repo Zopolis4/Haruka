@@ -206,12 +206,14 @@ mainthreadplus (void *p)
 		      mainram.write (0x472, 0x34);
 		    }
 		  cartrom.clearrom ();
-		  jio.setpcjrmode (false);
+		  jio.set_base1_rom (false);
+		  jio.set_base2_rom (false);
 		  if (mainthreaddata.pcjrflag)
 		    {
 		      cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
 		      cartrom.loadrom (65536 * 2, "PCJR_F.ROM", 65536);
-		      jio.setpcjrmode (true);
+		      jio.set_base1_rom (true);
+		      jio.set_base2_rom (true);
 		    }
 		  if (mainthreaddata.origpcjrflag)
 		    {
