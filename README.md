@@ -22,7 +22,6 @@ This program loads following ROM image files from current working directory.
 
 This program loads following ROM image files if -j option is specified.
 
-* PCJR_D.ROM : PCjr cartridge D0000h-DFFFFh
 * PCJR_E.ROM : PCjr cartridge E0000h-EFFFFh
 * PCJR_F.ROM : PCjr cartridge F0000h-FFFFFh
 
