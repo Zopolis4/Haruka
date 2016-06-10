@@ -39,7 +39,7 @@ Cartridge ROM image can be loaded with -d0, -d8, -e0, -e8, -f0 or -f8 option. Th
 * -d0 for D0000h, application
 * -d8 for D8000h, application
 * -e0 for E0000h, application for PCjr
-* -e8 for E8000h, application for PCjr
+* -e8 for E8000h, application for PCjr, 32KiB cartridge BASIC for PCjr
 * -f0 for F0000h, system
 * -f8 for F8000h, system
 
@@ -96,4 +96,3 @@ Run 5511emu.
 * Serial port emulation is not implemented. No error is reported by BIOS since it is an expansion card on JX. In original PCjr mode the BIOS may report an error.
 * BIOS continues booting when a kj-rom checksum test fails because HLT instruction is not properly emulated.
 * Joystick is emulated but not controllable.
-* Application cartridge support is not yet implemented.
