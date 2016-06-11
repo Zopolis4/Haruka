@@ -1,0 +1,25 @@
+Make Font Utility
+
+
+This utility creates font ROM image from public domain Shinonome font
+and your video BIOS.  If you could not extract font ROM from JX, this
+must be useful.
+
+
+* Build
+
+Run make.
+
+
+* Make Font
+
+Put makefont.com and fontsrc.dat in a directory and run the
+makefont.com on DOS compatible environment to create FONT_8.ROM,
+FONT_9.ROM, FONT_A.ROM and FONT_B.ROM into the directory.  Please note
+that change current directory to the directory before running the
+program.
+
+This program should work on PCjr, but the fontsrc.dat and output files
+need about 400KB space on a disk, so a 720KiB diskette or a hard drive
+is required.  Using QEMU or dosemu is much easier than using such
+legacy machines.
