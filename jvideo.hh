@@ -118,12 +118,17 @@ public:
   bool pcjrmem () { return (mode2[1] & 16) ? true : false; }
   //virtual void floppyaccess (int n);
 private:
+  SDL_Window *window;
   SDL_Surface *surface;
   SDL_Color pal[256];
+  SDL_Surface *mysurface;
+  SDL_Surface *mysurface2;
+  SDL_Palette *mypalette;
   unsigned long *bits;
   unsigned long *bits2;
 public:
-  jvideo (SDL_Surface *, jmem *program, jmem *kanjirom) throw (char *);
+  jvideo (SDL_Window *, SDL_Surface *, jmem *program, jmem *kanjirom)
+    throw (char *);
   ~jvideo ();
   void draw ();
   void floppyaccess (int n);

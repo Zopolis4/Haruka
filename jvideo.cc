@@ -52,6 +52,9 @@ jvideo::jvideo (jmem *program, jmem *kanjirom)
 
 jvideo::~jvideo ()
 {
+  SDL_FreeSurface (mysurface2);
+  SDL_FreeSurface (mysurface);
+  SDL_FreePalette (mypalette);
   delete vram;
   delete[] drawdata;
   delete[] drawdata1;
@@ -755,7 +758,7 @@ jvideo::floppyaccess (int n)
 {
 }
 
-jvideo::jvideo (SDL_Surface *surface, jmem *program,
+jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem *program,
 		jmem *kanjirom) throw (char *)
 {
   int i;
@@ -776,12 +779,19 @@ jvideo::jvideo (SDL_Surface *surface, jmem *program,
   for (i = 0 ; i < 16 ; i++)
     palette[i] = 0;
 
+  jvideo::window = window;
   jvideo::surface = surface;
   if (!surface)
     {
       cerr << "SDL_SetVideoMode failed: " << SDL_GetError () << endl;
       throw ("video");
     }
+  mypalette = SDL_AllocPalette (256);
+  mysurface = SDL_CreateRGBSurface (0, 640, 200, 8, 0, 0, 0, 0);
+  SDL_SetSurfacePalette (mysurface, mypalette);
+  // SDL_BlitScaled seems not working with 8bit depth surface so
+  // create another 32bit depth surface and copy twice to blit :-)
+  mysurface2 = SDL_CreateRGBSurface (0, 640, 200, 32, 0, 0, 0, 0);
 }
 
 void
@@ -897,10 +907,10 @@ jvideo::draw ()
     }
   //for (i = 0 ; i < 256 ; i++)
   //  pal[i] = cl[palette[15]];
-  SDL_SetPalette (surface, SDL_LOGPAL | SDL_PHYSPAL, pal, 0, 256);
-  if (SDL_MUSTLOCK (surface))
+  SDL_SetPaletteColors (mypalette, pal, 0, 256);
+  if (SDL_MUSTLOCK (mysurface))
     {
-      if (SDL_LockSurface (surface) < 0)
+      if (SDL_LockSurface (mysurface) < 0)
 	{
 	  cerr << "lock failed" << endl;
 	  return;
@@ -908,13 +918,14 @@ jvideo::draw ()
     }
   for (i = 0 ; i < 200 ; i++)
     {
-      memcpy ((Uint8 *)surface->pixels + (i * 2 + 0) * surface->pitch, q, 640);
-      memcpy ((Uint8 *)surface->pixels + (i * 2 + 1) * surface->pitch, q, 640);
+      memcpy ((Uint8 *)mysurface->pixels + i * mysurface->pitch, q, 640);
       q += 640;
     }
-  if (SDL_MUSTLOCK (surface))
-    SDL_UnlockSurface (surface);
-  SDL_UpdateRect (surface, 0, 0, 640, 400);
+  if (SDL_MUSTLOCK (mysurface))
+    SDL_UnlockSurface (mysurface);
+  SDL_BlitSurface (mysurface, NULL, mysurface2, NULL);
+  SDL_BlitScaled (mysurface2, NULL, surface, NULL);
+  SDL_UpdateWindowSurface (window);
 }
 
 ////////////////////////////////////////////////////////////

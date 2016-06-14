@@ -54,12 +54,17 @@ jevent::handle_event ()
   switch (event.type)
     {
     case SDL_KEYDOWN:
-      tmp = keyconv (event.key.keysym.sym);
-      if (tmp)
-	keybd->keydown (tmp);
+      // SDL1: one key down one SDL_KEYDOWN
+      // SDL2: one key down many SDL_KEYDOWN during auto-repeat
+      if (!event.key.repeat)
+	{
+	  tmp = keyconv (event.key.keysym.scancode);
+	  if (tmp)
+	    keybd->keydown (tmp);
+	}
       break;
     case SDL_KEYUP:
-      tmp = keyconv (event.key.keysym.sym);
+      tmp = keyconv (event.key.keysym.scancode);
       if (tmp)
 	keybd->keyup (tmp);
       break;
@@ -95,143 +100,111 @@ jevent::push_event (int code)
 }
 
 int
-jevent::keyconv (SDLKey key)
+jevent::keyconv (SDL_Scancode key)
 {
   switch (key)
     {
-    case SDLK_BACKSPACE: return 0xe;
-    case SDLK_TAB: return 0xf;
-    case SDLK_CLEAR: break;
-    case SDLK_RETURN: return 0x1c;
-    case SDLK_PAUSE: break;
-    case SDLK_ESCAPE: return 0x1;
-    case SDLK_SPACE: return 0x39;
-    case SDLK_EXCLAIM: break;
-    case SDLK_QUOTEDBL: break;
-    case SDLK_HASH: break;
-    case SDLK_DOLLAR: break;
-    case SDLK_AMPERSAND: break;
-    case SDLK_QUOTE: return 0x28;
-    case SDLK_LEFTPAREN: break;
-    case SDLK_RIGHTPAREN: break;
-    case SDLK_ASTERISK: break;
-    case SDLK_PLUS: break;
-    case SDLK_COMMA: return 0x33;
-    case SDLK_MINUS: return 0xc;
-    case SDLK_PERIOD: return 0x34;
-    case SDLK_SLASH: return 0x35;
-    case SDLK_0: return 0xb;
-    case SDLK_1: return 0x2;
-    case SDLK_2: return 0x3;
-    case SDLK_3: return 0x4;
-    case SDLK_4: return 0x5;
-    case SDLK_5: return 0x6;
-    case SDLK_6: return 0x7;
-    case SDLK_7: return 0x8;
-    case SDLK_8: return 0x9;
-    case SDLK_9: return 0xa;
-    case SDLK_COLON: break;
-    case SDLK_SEMICOLON: return 0x27;
-    case SDLK_LESS: break;
-    case SDLK_EQUALS: return 0xd;
-    case SDLK_GREATER: break;
-    case SDLK_QUESTION: break;
-    case SDLK_AT: break;
-    case SDLK_LEFTBRACKET: return 0x1a;
-    case SDLK_BACKSLASH: return 0x2b;
-    case SDLK_RIGHTBRACKET: return 0x1b;
-    case SDLK_CARET: break;
-    case SDLK_UNDERSCORE: break;
-    case SDLK_BACKQUOTE: return 0x29;
-    case SDLK_a: return 0x1e;
-    case SDLK_b: return 0x30;
-    case SDLK_c: return 0x2e;
-    case SDLK_d: return 0x20;
-    case SDLK_e: return 0x12;
-    case SDLK_f: return 0x21;
-    case SDLK_g: return 0x22;
-    case SDLK_h: return 0x23;
-    case SDLK_i: return 0x17;
-    case SDLK_j: return 0x24;
-    case SDLK_k: return 0x25;
-    case SDLK_l: return 0x26;
-    case SDLK_m: return 0x32;
-    case SDLK_n: return 0x31;
-    case SDLK_o: return 0x18;
-    case SDLK_p: return 0x19;
-    case SDLK_q: return 0x10;
-    case SDLK_r: return 0x13;
-    case SDLK_s: return 0x1f;
-    case SDLK_t: return 0x14;
-    case SDLK_u: return 0x16;
-    case SDLK_v: return 0x2f;
-    case SDLK_w: return 0x11;
-    case SDLK_x: return 0x2d;
-    case SDLK_y: return 0x15;
-    case SDLK_z: return 0x2c;
-    case SDLK_DELETE: return 0x53;
-    case SDLK_KP0: break;
-    case SDLK_KP1: break;
-    case SDLK_KP2: break;
-    case SDLK_KP3: break;
-    case SDLK_KP4: break;
-    case SDLK_KP5: break;
-    case SDLK_KP6: break;
-    case SDLK_KP7: break;
-    case SDLK_KP8: break;
-    case SDLK_KP9: break;
-    case SDLK_KP_PERIOD: break;
-    case SDLK_KP_DIVIDE: break;
-    case SDLK_KP_MULTIPLY: break;
-    case SDLK_KP_MINUS: return 0x4a;
-    case SDLK_KP_PLUS: return 0x4e;
-    case SDLK_KP_ENTER: break;
-    case SDLK_KP_EQUALS: break;
-    case SDLK_UP: return 0x48;
-    case SDLK_DOWN: return 0x50;
-    case SDLK_RIGHT: return 0x4d;
-    case SDLK_LEFT: return 0x4b;
-    case SDLK_INSERT: return 0x52;
-    case SDLK_HOME: return 0x47;
-    case SDLK_END: break;
-    case SDLK_PAGEUP: break;
-    case SDLK_PAGEDOWN: break;
-    case SDLK_F1: return 0x3b;
-    case SDLK_F2: return 0x3c;
-    case SDLK_F3: return 0x3d;
-    case SDLK_F4: return 0x3e;
-    case SDLK_F5: return 0x3f;
-    case SDLK_F6: return 0x40;
-    case SDLK_F7: return 0x41;
-    case SDLK_F8: return 0x42;
-    case SDLK_F9: return 0x43;
-    case SDLK_F10: return 0x44;
-    case SDLK_F11: return 0x54;	// Fn
-    case SDLK_F12: return 0x6a;	// yen
-    case SDLK_F13: break;
-    case SDLK_F14: break;
-    case SDLK_F15: break;
-    case SDLK_NUMLOCK: break;
-    case SDLK_CAPSLOCK: return 0x3a;
-    case SDLK_SCROLLOCK: return 0x46;
-    case SDLK_RSHIFT: return 0x36;
-    case SDLK_LSHIFT: return 0x2a;
-    case SDLK_RCTRL: return 0x6d; // henkan
-    case SDLK_LCTRL: return 0x1d;
-    case SDLK_RALT: return 0x6b; // kanji
-    case SDLK_LALT: return 0x38;
-    case SDLK_RMETA: break;
-    case SDLK_LMETA: break;
-    case SDLK_LSUPER: break;
-    case SDLK_RSUPER: return 0x6c; // mu-henkan
-    case SDLK_MODE: break;
-    case SDLK_HELP: break;
-    case SDLK_PRINT: return 0x37;
-    case SDLK_SYSREQ: break;
-    case SDLK_BREAK: break;
-    case SDLK_MENU: break;
-    case SDLK_POWER: break;
-    case SDLK_EURO: break;
+    case SDL_SCANCODE_BACKSPACE: return 0xe;
+    case SDL_SCANCODE_TAB: return 0xf;
+    case SDL_SCANCODE_CLEAR: break;
+    case SDL_SCANCODE_RETURN: return 0x1c;
+    case SDL_SCANCODE_PAUSE: break;
+    case SDL_SCANCODE_ESCAPE: return 0x1;
+    case SDL_SCANCODE_SPACE: return 0x39;
+    case SDL_SCANCODE_APOSTROPHE: return 0x28;
+    case SDL_SCANCODE_COMMA: return 0x33;
+    case SDL_SCANCODE_MINUS: return 0xc;
+    case SDL_SCANCODE_PERIOD: return 0x34;
+    case SDL_SCANCODE_SLASH: return 0x35;
+    case SDL_SCANCODE_0: return 0xb;
+    case SDL_SCANCODE_1: return 0x2;
+    case SDL_SCANCODE_2: return 0x3;
+    case SDL_SCANCODE_3: return 0x4;
+    case SDL_SCANCODE_4: return 0x5;
+    case SDL_SCANCODE_5: return 0x6;
+    case SDL_SCANCODE_6: return 0x7;
+    case SDL_SCANCODE_7: return 0x8;
+    case SDL_SCANCODE_8: return 0x9;
+    case SDL_SCANCODE_9: return 0xa;
+    case SDL_SCANCODE_SEMICOLON: return 0x27;
+    case SDL_SCANCODE_EQUALS: return 0xd;
+    case SDL_SCANCODE_LEFTBRACKET: return 0x1a;
+    case SDL_SCANCODE_BACKSLASH: return 0x2b;
+    case SDL_SCANCODE_RIGHTBRACKET: return 0x1b;
+    case SDL_SCANCODE_GRAVE: return 0x29;
+    case SDL_SCANCODE_A: return 0x1e;
+    case SDL_SCANCODE_B: return 0x30;
+    case SDL_SCANCODE_C: return 0x2e;
+    case SDL_SCANCODE_D: return 0x20;
+    case SDL_SCANCODE_E: return 0x12;
+    case SDL_SCANCODE_F: return 0x21;
+    case SDL_SCANCODE_G: return 0x22;
+    case SDL_SCANCODE_H: return 0x23;
+    case SDL_SCANCODE_I: return 0x17;
+    case SDL_SCANCODE_J: return 0x24;
+    case SDL_SCANCODE_K: return 0x25;
+    case SDL_SCANCODE_L: return 0x26;
+    case SDL_SCANCODE_M: return 0x32;
+    case SDL_SCANCODE_N: return 0x31;
+    case SDL_SCANCODE_O: return 0x18;
+    case SDL_SCANCODE_P: return 0x19;
+    case SDL_SCANCODE_Q: return 0x10;
+    case SDL_SCANCODE_R: return 0x13;
+    case SDL_SCANCODE_S: return 0x1f;
+    case SDL_SCANCODE_T: return 0x14;
+    case SDL_SCANCODE_U: return 0x16;
+    case SDL_SCANCODE_V: return 0x2f;
+    case SDL_SCANCODE_W: return 0x11;
+    case SDL_SCANCODE_X: return 0x2d;
+    case SDL_SCANCODE_Y: return 0x15;
+    case SDL_SCANCODE_Z: return 0x2c;
+    case SDL_SCANCODE_DELETE: return 0x53;
+    case SDL_SCANCODE_KP_PERIOD: break;
+    case SDL_SCANCODE_KP_DIVIDE: break;
+    case SDL_SCANCODE_KP_MULTIPLY: break;
+    case SDL_SCANCODE_KP_MINUS: return 0x4a;
+    case SDL_SCANCODE_KP_PLUS: return 0x4e;
+    case SDL_SCANCODE_KP_ENTER: break;
+    case SDL_SCANCODE_KP_EQUALS: break;
+    case SDL_SCANCODE_UP: return 0x48;
+    case SDL_SCANCODE_DOWN: return 0x50;
+    case SDL_SCANCODE_RIGHT: return 0x4d;
+    case SDL_SCANCODE_LEFT: return 0x4b;
+    case SDL_SCANCODE_INSERT: return 0x52;
+    case SDL_SCANCODE_HOME: return 0x47;
+    case SDL_SCANCODE_END: break;
+    case SDL_SCANCODE_PAGEUP: break;
+    case SDL_SCANCODE_PAGEDOWN: break;
+    case SDL_SCANCODE_F1: return 0x3b;
+    case SDL_SCANCODE_F2: return 0x3c;
+    case SDL_SCANCODE_F3: return 0x3d;
+    case SDL_SCANCODE_F4: return 0x3e;
+    case SDL_SCANCODE_F5: return 0x3f;
+    case SDL_SCANCODE_F6: return 0x40;
+    case SDL_SCANCODE_F7: return 0x41;
+    case SDL_SCANCODE_F8: return 0x42;
+    case SDL_SCANCODE_F9: return 0x43;
+    case SDL_SCANCODE_F10: return 0x44;
+    case SDL_SCANCODE_F11: return 0x54;	// Fn
+    case SDL_SCANCODE_F12: return 0x6a;	// yen
+    case SDL_SCANCODE_F13: break;
+    case SDL_SCANCODE_F14: break;
+    case SDL_SCANCODE_F15: break;
+    case SDL_SCANCODE_CAPSLOCK: return 0x3a;
+    case SDL_SCANCODE_SCROLLLOCK: return 0x46;
+    case SDL_SCANCODE_RSHIFT: return 0x36;
+    case SDL_SCANCODE_LSHIFT: return 0x2a;
+    case SDL_SCANCODE_RCTRL: return 0x6d; // henkan
+    case SDL_SCANCODE_LCTRL: return 0x1d;
+    case SDL_SCANCODE_RALT: return 0x6b; // kanji
+    case SDL_SCANCODE_LALT: return 0x38;
+    case SDL_SCANCODE_RGUI: return 0x6c; // mu-henkan
+    case SDL_SCANCODE_MODE: break;
+    case SDL_SCANCODE_HELP: break;
+    case SDL_SCANCODE_PRINTSCREEN: return 0x37;
+    case SDL_SCANCODE_SYSREQ: break;
+    case SDL_SCANCODE_MENU: break;
+    case SDL_SCANCODE_POWER: break;
     default: break;
     }
   return 0;

@@ -1,5 +1,5 @@
 #ARCH=-march=pentium-m
-CXXFLAGS=-g -Wall -O2 $(ARCH) `sdl-config --cflags`
+CXXFLAGS=-g -Wall -O2 $(ARCH) `pkg-config sdl2 --cflags`
 
 .PHONY : all clean
 all : 5511emu
@@ -8,7 +8,7 @@ clean :
 	rm jmain.o jmem.o sdlsound.o jvideo.o jioclass.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o
 
 5511emu : jmain.o jmem.o sdlsound.o jvideo.o jioclass.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o
-	$(CXX) -g -o 5511emu jmain.o jmem.o sdlsound.o jvideo.o jkey.o jioclass.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o `sdl-config --libs`
+	$(CXX) -g -o 5511emu jmain.o jmem.o sdlsound.o jvideo.o jkey.o jioclass.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o `pkg-config sdl2 --libs`
 
 8088.o : 8088.c
 	$(CC) -g -O3 $(ARCH) -Wall -o 8088.o -c 8088.c

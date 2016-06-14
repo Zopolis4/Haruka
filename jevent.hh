@@ -20,7 +20,7 @@ class jevent
 {
 private:
   jkey *keybd;
-  int keyconv (SDLKey key);
+  int keyconv (SDL_Scancode key);
   bool quit_flag;
 public:
   jevent (jkey *key);
