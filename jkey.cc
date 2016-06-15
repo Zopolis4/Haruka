@@ -24,62 +24,37 @@ using namespace std;
 jkey::jkey ()
 {
   nmiflag = 0;
-  nmikeycode = 128;
-  nmikeycode2 = 0;
-  nmiclks = 0;
-  keyrepeatcount = 0;
+  clkcount = 0;
+  keyrepeatclkcount = 0;
   keydata = 0;
-  skipclks = 0;
-  nmikeycodes[0] = 
-    nmikeycodes[1] = 
-    nmikeycodes[2] = 
-    nmikeycodes[3] = 0;
+  data0 = 0;
+  skipclkcount = 0;
+  repeatkey = 0;
+  intrclkcount = 0;
+  keybuf_getnext = 0;
+  keybuf_putnext = 0;
 }
 
 void
 jkey::keydown (int code)
 {
-  int i;
-
-  /*
-  if (code == 0x48) code = 0x79;
-  if (code == 0x4b) code = 0x75;
-  if (code == 0x4d) code = 0x77;
-  if (code == 0x50) code = 0x73;
-  */
-  for (i = 0 ; i < 4 ; i++)
-    if (!nmikeycodes[i])
-      break;
-  if (i == 4)
+  if (keybuf_getnext + 4 == keybuf_putnext)
     return;
-  nmikeycodes[i] = code;
+  keybuf[keybuf_putnext++ & 3] = code;
 }
 
 void
 jkey::keyup (int code)
 {
-  int i;
-
-  /*
-  if (code == 0x48) code = 0x79;
-  if (code == 0x4b) code = 0x75;
-  if (code == 0x4d) code = 0x77;
-  if (code == 0x50) code = 0x73;
-  */
-  for (i = 0 ; i < 4 ; i++)
-    if (!nmikeycodes[i])
-      break;
-  if (i == 4)
+  if (keybuf_getnext + 4 == keybuf_putnext)
     return;
-  nmikeycodes[i] = code | 128;
+  keybuf[keybuf_putnext++ & 3] = code | 128;
 }
 
 t16
 jkey::in ()
 {
-  if (nmiflag != 1)
-    nmiflag = 0;
-  keydata = 0;
+  nmiflag = 0;
   return data0;
 }
 
@@ -90,144 +65,89 @@ jkey::out (t16 d)
 }
 
 bool
-jkey::clkin (int clk)
+jkey::input_ok (int clk)
 {
-  bool f;
-  int i;
-
-  f = false;
-  if (skipclks)
+  if (!(data0 & 128))
     {
-      skipclks -= clk;
-      if (skipclks < 0)
-	skipclks = 0;
+      // NMI is disabled
+      intrclkcount += clk;
+      // Wait for NMI enable for convenience
+      if (intrclkcount < KEYINTRCLK)
+	return false;
     }
-  if (nmiflag >= 1)
-    {
-      nmiclks += clk;
-      if (nmiclks >= 3150/*+340*/)
-	{
-	  nmiclks -= 3150/*+340*/;
-	  if (nmiflag == 1)
-	    {
-	      if (skipclks == 0)
-		{
-		  if (data0 & 128)
-		    {
-		      nmiflag = 2;
-		      f = true;
-		      //callnmi ();
-		      //nmiclks = 0;
-		      keydata = 1;
-		      skipclks = 14318180 / 32;
-		    }
-		}
-	      //else
-	      //  nmiflag = 0;
-	    }
-	  else//if (nmiflag >= 2)
-	    {
-	      nmiflag++;
-	      switch (nmiflag)
-		{
-		case 3:
-		  keydata = 0;
-		  break;
-		case 4:
-		  keydata = nmikeycode & 1;
-		  break;
-		case 5:
-		  keydata = !(nmikeycode & 1);
-		  break;
-		case 6:
-		  keydata = nmikeycode & 2;
-		  break;
-		case 7:
-		  keydata = !(nmikeycode & 2);
-		  break;
-		case 8:
-		  keydata = nmikeycode & 4;
-		  break;
-		case 9:
-		  keydata = !(nmikeycode & 4);
-		  break;
-		case 10:
-		  keydata = nmikeycode & 8;
-		  break;
-		case 11:
-		  keydata = !(nmikeycode & 8);
-		  break;
-		case 12:
-		  keydata = nmikeycode & 16;
-		  break;
-		case 13:
-		  keydata = !(nmikeycode & 16);
-		  break;
-		case 14:
-		  keydata = nmikeycode & 32;
-		  break;
-		case 15:
-		  keydata = !(nmikeycode & 32);
-		  break;
-		case 16:
-		  keydata = nmikeycode & 64;
-		  break;
-		case 17:
-		  keydata = !(nmikeycode & 64);
-		  break;
-		case 18:
-		  keydata = nmikeycode & 128;
-		  break;
-		case 19:
-		  keydata = !(nmikeycode & 128);
-		  break;
-		case 20:
-		  {
-		    int i, j = nmikeycode;
-		    keydata = 1;
-		    for (i=0;i<8;i++,j>>=1)
-		      keydata ^= j & 1;
-		  }
-		  break;
-		case 21:
-		  {
-		    int i, j = nmikeycode;
-		    keydata = 0;
-		    for (i=0;i<8;i++,j>>=1)
-		      keydata ^= j & 1;
-		  }
-		  break;
-		default:
-		  nmiflag=22;
-		}
-	    }
-	}
-    }
-  else
-    {
-      if (nmikeycode2)
-	{
-	  nmikeycode = nmikeycode2;
-	  nmikeycode2 = 0;
-	  nmiflag = 1;
-	  keyrepeatcount = (int)(14318180 * 0.6);
-	}
-    }
-  if (!(nmikeycode & 128))
-    {
-      keyrepeatcount -= clk;
-      if (keyrepeatcount < 0)
-	{
-	  keyrepeatcount += 14318180 / 11;
-	  if (!nmiflag)
-	    nmiflag = 1;
-	}
-    }
-  for (i = 4 - 2 ; i >= 0 ; i--)
-    if (nmikeycodes[i] == 0 && nmikeycodes[i + 1] != 0)
-      nmikeycodes[i] = nmikeycodes[i + 1], nmikeycodes[i + 1] = 0;
-  if (nmikeycode2 == 0 && nmikeycodes[0] != 0)
-    nmikeycode2 = nmikeycodes[0], nmikeycodes[0] = 0;
-  return f;
+  intrclkcount = 0;
+  return true;
 }
 
+bool
+jkey::clkin (int clk)
+{
+  bool f = false;
+  if (skipclkcount)
+    {
+      skipclkcount -= clk;
+      if (skipclkcount < 0)
+	skipclkcount = 0;
+    }
+  clkcount += clk;
+  if (clkcount >= 0)
+    {
+      clkcount -= KEYCLK;
+      if (!(keydata >>= 1))
+	nmiflag = 0;
+    }
+  if (!skipclkcount)
+    {
+      int nextkey = 0;
+      if (keybuf_getnext != keybuf_putnext && input_ok (clk))
+	{
+	  nextkey = keybuf[keybuf_getnext++ & 3];
+	  if (nextkey & 128)
+	    {
+	      if ((nextkey & 127) == repeatkey)
+		repeatkey = 0;
+	    }
+	  else
+	    {
+	      repeatkey = nextkey;
+	      keyrepeatclkcount = KEYREPEAT1CLK;
+	    }
+	}
+      else if (repeatkey && keyrepeatclkcount < 0)
+	{
+	  keyrepeatclkcount += KEYREPEAT2CLK;
+	  nextkey = repeatkey;
+	}
+      if (nextkey)
+	{
+	  // Return value of getkeydata() for each bit:
+	  // - Bit '0': 220ns 0 220ns 1
+	  // - Bit '1': 220ns 1 220ns 0
+	  // - Stop bit: 440ns 0
+	  // Serialize key code
+	  // S D0 D1 D2 D3 D4 D5 D6 D7 P O O O O O O O O O O O
+	  // - S: Start bit '1'
+	  // - D0-D7: Data bit
+	  // - P: Parity bit (odd parity)
+	  // - O: Stop bit
+	  // Scan code for error (invalid combination): 0x55 (not used)
+	  int i, k = 1 << 18;
+	  for (i = 0; i < 8; i++)
+	    if (nextkey & (1 << i)) // Bit '1'
+	      k ^= (1 << (i * 2 + 2)) | (3 << 18);
+	    else		// Bit '0'
+	      k ^= 1 << (i * 2 + 3);
+	  keydata = k | 1;	// Start bit '1'
+	  clkcount = -KEYCLK;
+	  skipclkcount = 14318180 / 32;
+	  nmiflag = 1;
+	}
+    }
+  if (nmiflag == 1 && (data0 & 128))
+    {
+      nmiflag = 2;
+      f = true;
+    }
+  keyrepeatclkcount -= clk;
+  return f;
+}
