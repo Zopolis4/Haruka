@@ -153,9 +153,9 @@ sdlmainthread (void *p)
     }
 
   {
-    jvideo videoclass (window, surface, &program, &kanjirom);
+    jvideo videoclass (window, surface, program, kanjirom);
     {
-      stdfdc fdc (&videoclass);
+      stdfdc fdc (videoclass);
       md->fdc = &fdc;
       {
 	int i;
@@ -164,8 +164,8 @@ sdlmainthread (void *p)
 	    md->fdc->insert (i, md->fdfile[i]);
       }
       {
-	jioclass jio (&videoclass, &soundclass, &systemrom,
-		       &program, &mainram, &kanjirom, &keybd, &cartrom, &fdc);
+	jioclass jio (videoclass, soundclass, systemrom, program, mainram,
+		      kanjirom, keybd, cartrom, fdc);
 
 	jiop = &jio;
 	{
@@ -377,7 +377,7 @@ main (int argc, char **argv)
 	md.fdfile[j++] = argv[i];
     }
 
-  jevent event (&keybd);
+  jevent event (keybd);
   md.event = &event;
 
   SDL_Thread *thread = SDL_CreateThread (sdlmainthread, "main", &md);

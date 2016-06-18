@@ -31,9 +31,8 @@ extern "C"
   extern void printip8088 (void);
 }
 
-jevent::jevent (jkey *key)
+jevent::jevent (jkey &key) : keybd (key)
 {
-  keybd = key;
   quit_flag = false;
 }
 
@@ -61,13 +60,13 @@ jevent::handle_event ()
 	{
 	  tmp = keyconv (event.key.keysym.scancode);
 	  if (tmp)
-	    keybd->keydown (tmp);
+	    keybd.keydown (tmp);
 	}
       break;
     case SDL_KEYUP:
       tmp = keyconv (event.key.keysym.scancode);
       if (tmp)
-	keybd->keyup (tmp);
+	keybd.keyup (tmp);
       break;
     case SDL_MOUSEBUTTONDOWN:
       cerr << "Mouse down" << endl;

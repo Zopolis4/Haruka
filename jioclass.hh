@@ -37,15 +37,15 @@ private:
   };
   struct_regs1ff regs1ff[31];
   t16 memr_ (unsigned long adr);
-  jvideo *videoclass;
-  sdlsound *soundclass;
-  jmem *systemrom;
-  jmem *program;
-  jmem *mainram;
-  jmem *kanjirom;
-  jkey *kbd;
-  jmem *cartrom;
-  jfdc *fdc;
+  jvideo &videoclass;
+  sdlsound &soundclass;
+  jmem &systemrom;
+  jmem &program;
+  jmem &mainram;
+  jmem &kanjirom;
+  jkey &kbd;
+  jmem &cartrom;
+  jfdc &fdc;
   bool base1_rom, base2_rom;
 
   int joyx, joyy, joyb;
@@ -53,8 +53,8 @@ private:
   t16 block1ff;
   t16 dat8255[3];
 public:
-  jioclass (jvideo *, sdlsound *, jmem *sys, jmem *prg,
-	    jmem *main, jmem *knj, jkey *key, jmem *cart, jfdc *dsk);
+  jioclass (jvideo &d2, sdlsound &d3, jmem &sys, jmem &prg, jmem &main,
+	    jmem &knj, jkey &key, jmem &cart, jfdc &dsk);
   void clk (int clk);
   t16 memr (unsigned long addr);
   void memw (unsigned long addr, t16 v);

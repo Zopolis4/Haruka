@@ -31,32 +31,11 @@ extern "C"
   extern void untrigger_irq8259 (unsigned int irq_no);
 }
 
-jvideo::jvideo (jmem *program, jmem *kanjirom)
-{
-  int i;
-
-  jvideo::program = program;
-  jvideo::kanjirom = kanjirom;
-  drawdata = new unsigned char[640 * 200];
-  drawdata1 = new unsigned char[640 * 200];
-  drawdata2 = new unsigned char[640 * 200];
-  vram = new jmem (65536);
-  vsynccount = 0;
-  cursorcount = 0;
-  vsyncintflag = 0;
-  dat3da = 0;
-  flag3da[0] = flag3da[1] = 0;
-  pagereg[0] = pagereg[1] = 0;
-  for (i = 0 ; i < 16 ; i++)
-    palette[i] = 0;
-}
-
 jvideo::~jvideo ()
 {
   SDL_FreeSurface (mysurface2);
   SDL_FreeSurface (mysurface);
   SDL_FreePalette (mypalette);
-  delete vram;
   delete[] drawdata;
   delete[] drawdata1;
   delete[] drawdata2;
@@ -65,7 +44,7 @@ jvideo::~jvideo ()
 unsigned char
 jvideo::read2 (int offset)
 {
-  return vram->read ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535);
+  return vram.read ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535);
 }
 
 void
@@ -222,14 +201,13 @@ jvideo::out3da (bool vp2, unsigned char data)
 int
 jvideo::convsub (unsigned char *p, int vp)
 {
-  jmem *readmem;
   int maskdat;
   int readtop;
   bool fillbottom;
   unsigned char ctmp;
 
   fillbottom = false;
-  readmem = vmem (vp);
+  jmem &readmem = vmem (vp);
   maskdat = vmask (vp);
   readtop = vtop (vp);
   if (!(mode1[vp] & 8))
@@ -255,8 +233,8 @@ jvideo::convsub (unsigned char *p, int vp)
 	      drawaddr = i * 640 * 18;
 	      for (j = 0 ; j < l ; j++)
 		{
-		  d1 = readmem->read (k & maskdat);
-		  d2 = readmem->read ((k + 1) & maskdat);
+		  d1 = readmem.read (k & maskdat);
+		  d2 = readmem.read ((k + 1) & maskdat);
 		  bg = (d2 / 16) % 8;
 		  fg = d2 % 8;
 		  if (!(d2 & 128))
@@ -265,19 +243,19 @@ jvideo::convsub (unsigned char *p, int vp)
 		    {
 		      if (!(d2 & 8))
 			{
-			  d3 = readmem->read ((k + 2) & maskdat);
+			  d3 = readmem.read ((k + 2) & maskdat);
 			  addr = ((d1 * 256 + d3) & 0x1fff) << 5;
 			}
 		      else
 			{
-			  d3 = readmem->read ((k-2) & maskdat);
+			  d3 = readmem.read ((k-2) & maskdat);
 			  addr = (((d3 * 256 + d1) & 0x1fff) << 5) + 1;
 			}
 		    }
 		  for (m = 0 ; m < 16 ; m++)
 		    {
 		      e = drawaddr + 640 * m;
-		      d = kanjirom->read (addr);
+		      d = kanjirom.read (addr);
 		      if (x80 == true)
 			for (n = 0 ; n < 8 ; n++)
 			  p[e++] = (d & 128) ? fg : bg, d *= 2;
@@ -338,8 +316,8 @@ jvideo::convsub (unsigned char *p, int vp)
 	      drawaddr = i * 640 * 8;
 	      for (j = 0 ; j < l ; j++)
 		{
-		  d1 = readmem->read (k & maskdat);
-		  d2 = readmem->read ((k + 1) & maskdat);
+		  d1 = readmem.read (k & maskdat);
+		  d2 = readmem.read ((k + 1) & maskdat);
 		  bg = (d2 / 16) % 16;
 		  fg = d2 % 16;
 		  if (mode2[vp] & 2) // Blinking enabled
@@ -355,7 +333,7 @@ jvideo::convsub (unsigned char *p, int vp)
 		      for (m = 0 ; m < 8 ; m++)
 			{
 			  e = drawaddr + 640 * m;
-			  d = kanjirom->read (addr);
+			  d = kanjirom.read (addr);
 			  if (x80 == true)
 			    for (n = 0 ; n < 8 ; n++)
 			      p[e++] = (d & 128) ? fg : bg, d *= 2;
@@ -381,7 +359,7 @@ jvideo::convsub (unsigned char *p, int vp)
 		      for (m = 0 ; m < 8 ; m++)
 			{
 			  e = drawaddr + 640 * m;
-			  d = kanjirom->read (addr);
+			  d = kanjirom.read (addr);
 			  if (x80 == true)
 			    for (n = 0 ; n < 8 ; n++)
 			      p[e] &= 15, p[e++] |= ((d & 128) ? fg : bg) << 4,
@@ -487,7 +465,7 @@ jvideo::convsub (unsigned char *p, int vp)
 		    {
 		      for (k = 0 ; k < 80 ; k++)
 			{
-			  d = readmem->read ((j++) & maskdat);
+			  d = readmem.read ((j++) & maskdat);
 			  p[7] = d & 1, d >>= 1;
 			  p[6] = d & 1, d >>= 1;
 			  p[5] = d & 1, d >>= 1;
@@ -503,7 +481,7 @@ jvideo::convsub (unsigned char *p, int vp)
 		    {
 		      for (k = 0 ; k < 80 ; k++)
 			{
-			  d = readmem->read ((j++) & maskdat);
+			  d = readmem.read ((j++) & maskdat);
 			  p[7] &= 15;
 			  p[6] &= 15;
 			  p[5] &= 15;
@@ -531,7 +509,7 @@ jvideo::convsub (unsigned char *p, int vp)
 			{
 			  for (k = 0 ; k < 80 ; k++)
 			    {
-			      d = readmem->read ((j++) & maskdat);
+			      d = readmem.read ((j++) & maskdat);
 			      p[7] = p[6] = d & 3; d >>= 2;
 			      p[5] = p[4] = d & 3; d >>= 2;
 			      p[3] = p[2] = d & 3; d >>= 2;
@@ -543,7 +521,7 @@ jvideo::convsub (unsigned char *p, int vp)
 			{
 			  for (k = 0 ; k < 80 ; k++)
 			    {
-			      d = readmem->read ((j++) & maskdat);
+			      d = readmem.read ((j++) & maskdat);
 			      p[7] &= 15;
 			      p[6] &= 15;
 			      p[5] &= 15;
@@ -566,7 +544,7 @@ jvideo::convsub (unsigned char *p, int vp)
 			{
 			  for (k = 0 ; k < 80 ; k++)
 			    {
-			      d = readmem->read ((j++) & maskdat);
+			      d = readmem.read ((j++) & maskdat);
 			      p[7] = d & 1, d >>= 1;
 			      p[6] = d & 1, d >>= 1;
 			      p[5] = d & 1, d >>= 1;
@@ -575,7 +553,7 @@ jvideo::convsub (unsigned char *p, int vp)
 			      p[2] = d & 1, d >>= 1;
 			      p[1] = d & 1, d >>= 1;
 			      p[0] = d & 1;
-			      d = readmem->read ((j++) & maskdat);
+			      d = readmem.read ((j++) & maskdat);
 			      p[7] |= 2 * (d & 1), d >>= 1;
 			      p[6] |= 2 * (d & 1), d >>= 1;
 			      p[5] |= 2 * (d & 1), d >>= 1;
@@ -591,7 +569,7 @@ jvideo::convsub (unsigned char *p, int vp)
 			{
 			  for (k = 0 ; k < 80 ; k++)
 			    {
-			      d = readmem->read ((j++) & maskdat);
+			      d = readmem.read ((j++) & maskdat);
 			      p[7] &= 15;
 			      p[6] &= 15;
 			      p[5] &= 15;
@@ -608,7 +586,7 @@ jvideo::convsub (unsigned char *p, int vp)
 			      p[2] |= (d & 1) << 4, d >>= 1;
 			      p[1] |= (d & 1) << 4, d >>= 1;
 			      p[0] |= (d & 1) << 4;
-			      d = readmem->read ((j++) & maskdat);
+			      d = readmem.read ((j++) & maskdat);
 			      p[7] |= 32 * (d & 1), d >>= 1;
 			      p[6] |= 32 * (d & 1), d >>= 1;
 			      p[5] |= 32 * (d & 1), d >>= 1;
@@ -627,7 +605,7 @@ jvideo::convsub (unsigned char *p, int vp)
 		    {
 		      for (k = 40 * y ; k > 0 ; k--)
 			{
-			  d = readmem->read ((j++) & maskdat);
+			  d = readmem.read ((j++) & maskdat);
 			  d1 = d / 16;
 			  d2 = d % 16;
 			  for (l = 0 ; l < x ; l++)
@@ -640,7 +618,7 @@ jvideo::convsub (unsigned char *p, int vp)
 		    {
 		      for (k = 40 * y ; k > 0 ; k--)
 			{
-			  d = readmem->read ((j++) & maskdat);
+			  d = readmem.read ((j++) & maskdat);
 			  d1 = d / 16;
 			  d2 = d % 16;
 			  ctmp = d1 << 4;
@@ -759,17 +737,15 @@ jvideo::floppyaccess (int n)
 {
 }
 
-jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem *program,
-		jmem *kanjirom) throw (char *)
+jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
+		jmem &kanjirom_arg) throw (char *)
+  : program (program_arg), vram (65536), kanjirom (kanjirom_arg)
 {
   int i;
 
-  jvideo::program = program;
-  jvideo::kanjirom = kanjirom;
   drawdata = new unsigned char[640 * 200];
   drawdata1 = new unsigned char[640 * 200];
   drawdata2 = new unsigned char[640 * 200];
-  vram = new jmem (65536);
   vsynccount = 0;
   cursorcount = 0;
   blinkcount = 0;

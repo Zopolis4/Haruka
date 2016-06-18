@@ -28,11 +28,10 @@ extern "C"
   extern void trigger_irq8259 (unsigned int);
 }
 
-jfdc::jfdc (jvideo *d)
+jfdc::jfdc (jvideo &d) : video (d)
 {
   p = "AZ";
   f2 = 0;
-  video = d;
   cmdcode = 0;
 }
 
@@ -51,7 +50,7 @@ jfdc::outf2 (t16 v)
       p = "AZ";
     }
   f2 = v;
-  video->floppyaccess (v);
+  video.floppyaccess (v);
 }
 
 t16

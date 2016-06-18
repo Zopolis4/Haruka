@@ -34,7 +34,7 @@ using std::ostringstream;
 using std::setw;
 using std::setfill;
 
-stdfdc::stdfdc (jvideo *d) : jfdc (d)
+stdfdc::stdfdc (jvideo &d) : jfdc (d)
 {
   int i;
 

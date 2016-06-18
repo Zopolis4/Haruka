@@ -35,7 +35,7 @@ protected:
   virtual void recalibrate ();
   virtual void seek ();
 public:
-  stdfdc (jvideo *d);
+  stdfdc (jvideo &d);
   void insert (t16 drive, char *filename);
   void eject (t16 drive);
 };

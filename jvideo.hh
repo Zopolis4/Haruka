@@ -43,9 +43,9 @@ private:
   };
 private:
   int flag3da[2];
-  jmem *program;		// Programmable RAM
-  jmem *vram;			// 32KB VRAM + 32KB VRAM
-  jmem *kanjirom;
+  jmem &program;		// Programmable RAM
+  jmem vram;			// 32KB VRAM + 32KB VRAM
+  jmem &kanjirom;
   int vsynccount, cursorcount;
   int blinkcount;
   int vsyncintflag;
@@ -67,7 +67,7 @@ private:
       return a + (pagereg[1] & 3) * 16384;
     return a + (pagereg[0] & 7) * 16384;
   }
-  jmem *vmem (int vp2)
+  jmem &vmem (int vp2)
   {
     if (vp2)
       return vram;
@@ -88,21 +88,19 @@ protected:
   unsigned char palette[16];
   int fillbottom;
 public:
-  jvideo (jmem *program, jmem *kanjirom);
-  //virtual ~jvideo ();
   unsigned char read (bool vp2, int offset)
   {
     if (vp2)
-      return vram->read ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535);
-    return program->read ((offset + ((pagereg[0] >> 3) & 7) * 16384) & 131071);
+      return vram.read ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535);
+    return program.read ((offset + ((pagereg[0] >> 3) & 7) * 16384) & 131071);
   }
   unsigned char read2 (int offset);
   void write (bool vp2, int offset, unsigned char data)
   {
     if (vp2)
-      return vram->write ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535,
+      return vram.write ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535,
 			  data);
-    return program->write ((offset + ((pagereg[0] >> 3) & 7) * 16384) & 131071,
+    return program.write ((offset + ((pagereg[0] >> 3) & 7) * 16384) & 131071,
 			   data);
   }
   t16 in3da (bool vp2) { flag3da[vp2 ? 1 : 0] = 0; return dat3da ^= 16; }
@@ -127,7 +125,7 @@ private:
   unsigned long *bits;
   unsigned long *bits2;
 public:
-  jvideo (SDL_Window *, SDL_Surface *, jmem *program, jmem *kanjirom)
+  jvideo (SDL_Window *, SDL_Surface *, jmem &program, jmem &kanjirom)
     throw (char *);
   ~jvideo ();
   void draw ();

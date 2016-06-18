@@ -19,7 +19,7 @@
 class jfdc
 {
 private:
-  jvideo *video;
+  jvideo &video;
   t16 cmdcode;
   void run (char c);
   bool transint;
@@ -42,7 +42,7 @@ protected:
   void timeout ();
   void transfertimeout ();
 public:
-  jfdc (jvideo *d);
+  jfdc (jvideo &d);
   t16 inf2 ();
   void outf2 (t16 v);
   t16 inf4 ();

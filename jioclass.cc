@@ -35,9 +35,10 @@ extern "C"
   extern void printip8088 (void);
 }
 
-jioclass::jioclass (jvideo *d2, sdlsound *d3,
-		    jmem *sys, jmem *prg, jmem *main, jmem *knj,
-		    jkey *key, jmem *cart, jfdc *dsk)
+jioclass::jioclass (jvideo &d2, sdlsound &d3, jmem &sys, jmem &prg, jmem &main,
+		    jmem &knj, jkey &key, jmem &cart, jfdc &dsk)
+  : videoclass (d2), soundclass (d3), systemrom (sys), program (prg),
+    mainram (main), kanjirom (knj), kbd (key), cartrom (cart), fdc (dsk)
 {
   struct_regs1ff d[31] = {
     {0, 0, 0203, 0003, 0074, 0040}, // 00 IROM7
@@ -74,16 +75,7 @@ jioclass::jioclass (jvideo *d2, sdlsound *d3,
   };
   //regs1ff = d;
   memcpy ((void *)regs1ff, (void *)d, sizeof regs1ff);
-  videoclass = d2;
-  soundclass = d3;
-  systemrom = sys;
-  program = prg;
-  mainram = main;
-  kanjirom = knj;
-  kbd = key;
   joyx = joyy = joyb = 0;
-  cartrom = cart;
-  fdc = dsk;
   base1_rom = false;
   base2_rom = false;
 }
@@ -113,50 +105,50 @@ jioclass::memr_ (unsigned long adr)
   switch (i)
     {
     case 0:
-      dat = systemrom->read (adr & 0x1ffff);
+      dat = systemrom.read (adr & 0x1ffff);
       break;
     case 1:
-      dat = cartrom->read (32768 * 0 + (adr & 0x7fff));
+      dat = cartrom.read (32768 * 0 + (adr & 0x7fff));
       break;
     case 2:
-      dat = cartrom->read (32768 * 1 + (adr & 0x7fff));
+      dat = cartrom.read (32768 * 1 + (adr & 0x7fff));
       break;
     case 3:
-      dat = cartrom->read (32768 * 2 + (adr & 0x7fff));
+      dat = cartrom.read (32768 * 2 + (adr & 0x7fff));
       break;
     case 4:
-      dat = cartrom->read (32768 * 3 + (adr & 0x7fff));
+      dat = cartrom.read (32768 * 3 + (adr & 0x7fff));
       break;
     case 5:
-      dat = cartrom->read (32768 * 4 + (adr & 0x7fff));
+      dat = cartrom.read (32768 * 4 + (adr & 0x7fff));
       break;
     case 6:
-      dat = cartrom->read (32768 * 5 + (adr & 0x7fff));
+      dat = cartrom.read (32768 * 5 + (adr & 0x7fff));
       break;
     case 7:
-      dat = kanjirom->read (adr & 0x3ffff);
+      dat = kanjirom.read (adr & 0x3ffff);
       break;
     case 8:
-      if (videoclass->pcjrmem ())
+      if (videoclass.pcjrmem ())
 	{
 	  if (adr < 0x20000)
-	    dat = program->read (adr & 0x1ffff);
+	    dat = program.read (adr & 0x1ffff);
 	  else
-	    dat = mainram->read ((adr - 0x20000) % (384 * 1024));
+	    dat = mainram.read ((adr - 0x20000) % (384 * 1024));
 	}
       else
 	{
 	  if (adr < 0x60000)
-	    dat = mainram->read (adr % (384 * 1024));
+	    dat = mainram.read (adr % (384 * 1024));
 	  else
-	    dat = program->read ((adr - 0x60000) % (128 * 1024));
+	    dat = program.read ((adr - 0x60000) % (128 * 1024));
 	}
       break;
     case 9:
-      dat = videoclass->read (false, adr - ((tmp2 & tmp) << 15));
+      dat = videoclass.read (false, adr - ((tmp2 & tmp) << 15));
       break;
     case 10:
-      dat = videoclass->read (true, adr - ((tmp2 & tmp) << 15));
+      dat = videoclass.read (true, adr - ((tmp2 & tmp) << 15));
       break;
     default:
       dat = 255;
@@ -196,40 +188,40 @@ jioclass::memw (unsigned long addr, t16 v)
     case 0:
       break;
     case 1:
-      cartrom->write (32768 * 0 + (addr & 0x7fff), v);
+      cartrom.write (32768 * 0 + (addr & 0x7fff), v);
       break;
     case 2:
-      cartrom->write (32768 * 1 + (addr & 0x7fff), v);
+      cartrom.write (32768 * 1 + (addr & 0x7fff), v);
       break;
     case 7:
       {
 	t16 x = (addr & 0x3ffff) + 0x80000;
 
 	if (x >= 0x88000 && x <= 0x887ff)
-	  kanjirom->write (addr & 0x3ffff, v);
+	  kanjirom.write (addr & 0x3ffff, v);
       }
       break;
     case 8:
-      if (videoclass->pcjrmem ())
+      if (videoclass.pcjrmem ())
 	{
 	  if (addr < 0x20000)
-	    program->write (addr & 0x1ffff, v);
+	    program.write (addr & 0x1ffff, v);
 	  else
-	    mainram->write ((addr - 0x20000) % (384 * 1024), v);
+	    mainram.write ((addr - 0x20000) % (384 * 1024), v);
 	}
       else
 	{
 	  if (addr < 0x60000)
-	    mainram->write (addr % (384 * 1024), v);
+	    mainram.write (addr % (384 * 1024), v);
 	  else
-	    program->write ((addr - 0x60000) % (128 * 1024), v);
+	    program.write ((addr - 0x60000) % (128 * 1024), v);
 	}
       break;
     case 9:
-      videoclass->write (false, addr - ((tmp2 & tmp) << 15), v);
+      videoclass.write (false, addr - ((tmp2 & tmp) << 15), v);
       break;
     case 10:
-      videoclass->write (true, addr - ((tmp2 & tmp) << 15), v);
+      videoclass.write (true, addr - ((tmp2 & tmp) << 15), v);
       break;
     }
 }
@@ -264,30 +256,30 @@ jioclass::in (t16 n)
       }
       break;
     case 0x81:
-      return soundclass->in8253 (n & 3);
+      return soundclass.in8253 (n & 3);
       break;
     case 0x82:
       tmp = n & 7;
       if (tmp <= 1)
 	return dat8255[tmp];
-      return 2 | (kbd->getnmiflag () ? 1 : 0) |
-	(kbd->getkeydata () ? 64 : 0) | /*(timer2flag ? 32 : 0);*/
-	(soundclass->gettimer2out () ? 0x20 : 0);
+      return 2 | (kbd.getnmiflag () ? 1 : 0) |
+	(kbd.getkeydata () ? 64 : 0) | /*(timer2flag ? 32 : 0);*/
+	(soundclass.gettimer2out () ? 0x20 : 0);
       break;
     case 0x83:
       if (n == 0xa0)
 	{
-	  return kbd->in ();
+	  return kbd.in ();
 	}
       break;
     case 0x85:		// FDC
       switch (n & 15)
 	{
 	case 4:
-	  return fdc->inf4 ();
+	  return fdc.inf4 ();
 	  break;
 	case 5:
-	  return fdc->inf5 ();
+	  return fdc.inf5 ();
 	  break;
 	}
       break;
@@ -296,9 +288,9 @@ jioclass::in (t16 n)
 	{
 	  t16 r = 0;
 	  if (regs1ff[23].reg1 & 128)
-	    r = videoclass->in3da (false);
+	    r = videoclass.in3da (false);
 	  if (regs1ff[24].reg1 & 128)
-	    r = videoclass->in3da (true);
+	    r = videoclass.in3da (true);
 	  return r;
 	}
       break;
@@ -346,27 +338,27 @@ jioclass::out (t16 n, t16 v)
       write8259 (n, v);
       break;
     case 0x81:
-      soundclass->out8253 (n & 3, v);
+      soundclass.out8253 (n & 3, v);
       break;
     case 0x82:
       tmp = n & 7;
       if (tmp <= 2)
 	dat8255[tmp] = v;
       if (tmp == 1)
-	soundclass->set8255b (v);
+	soundclass.set8255b (v);
       break;
     case 0x83:
-      kbd->out (v);
-      soundclass->selecttimer1in (((v & 0x20) != 0) ? true : false);
+      kbd.out (v);
+      soundclass.selecttimer1in (((v & 0x20) != 0) ? true : false);
       break;
     case 0x85:
       switch (n & 15)
 	{
 	case 2:
-	  fdc->outf2 (v);
+	  fdc.outf2 (v);
 	  break;
 	case 5:
-	  fdc->outf5 (v);
+	  fdc.outf5 (v);
 	  break;
 	}
       break;
@@ -374,12 +366,12 @@ jioclass::out (t16 n, t16 v)
       if ((n&0xfff9) == 0x3d0)
 	{
 	  //mode3d0 = v;
-	  videoclass->out3d4 (v);
+	  videoclass.out3d4 (v);
 	  break;
 	}
       if ((n&0xfff9) == 0x3d1)
 	{
-	  videoclass->out3d5 (v);
+	  videoclass.out3d5 (v);
 	  break;
 	}
       break;
@@ -387,16 +379,16 @@ jioclass::out (t16 n, t16 v)
       if (n == 0x3da)
 	{
 	  if (regs1ff[23].reg1 & 128)
-	    videoclass->out3da (false, v & 255);
+	    videoclass.out3da (false, v & 255);
 	  if (regs1ff[24].reg1 & 128)
-	    videoclass->out3da (true, v & 255);
+	    videoclass.out3da (true, v & 255);
 	}
       if (n == 0x3d9)
 	if (regs1ff[27].reg1 & 128)
-	  videoclass->out3d9 (v);
+	  videoclass.out3d9 (v);
       if (n == 0x3df)
 	if (regs1ff[28].reg1 & 128)
-	  videoclass->out3df (v);
+	  videoclass.out3df (v);
       break;
     case 0x86:
       {
@@ -432,7 +424,7 @@ jioclass::out (t16 n, t16 v)
       }
       break;
     case 0x84:
-      soundclass->iowrite (v);
+      soundclass.iowrite (v);
       // FIXME: clk += 32 * 4;		// SN76489A needs 32 cycles
       break;
     }
