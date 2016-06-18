@@ -82,12 +82,6 @@ jioclass::jioclass (jvideo *d2, sdlsound *d3,
   kanjirom = knj;
   kbd = key;
   joyx = joyy = joyb = 0;
-  ignore21 = 0;
-  flag20 = 0;
-  timer2flag = 0;
-  fdc_mode = 0;
-  fdc_flag = 0;
-  timerintflag = 0;
   cartrom = cart;
   fdc = dsk;
   base1_rom = false;

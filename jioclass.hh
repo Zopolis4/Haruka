@@ -52,18 +52,6 @@ private:
   int status1ff;
   t16 block1ff;
   t16 dat8255[3];
-  t16 timerval[3], timerlatch[3];
-  int timermod[3];
-  int timermod2[3];
-  t16 timercounter[3];
-  int flag20;
-  int ignore21;
-  int timer2flag;
-  int fdc_cmdcode, fdc_mode, fdc_drive, fdc_flag, fdc_c, fdc_h, fdc_r, fdc_n;
-  int fdc_secsize;
-  unsigned char fdc_data[512*20];
-  int fdc_datap;
-  int timerintflag;
 public:
   jioclass (jvideo *, sdlsound *, jmem *sys, jmem *prg,
 	    jmem *main, jmem *knj, jkey *key, jmem *cart, jfdc *dsk);

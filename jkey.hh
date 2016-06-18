@@ -43,5 +43,4 @@ public:
   t16 in ();
   void out (t16 d);
   bool clkin (int clk);
-  inline int getdata0 () { return data0; }
 };

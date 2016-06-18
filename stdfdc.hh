@@ -22,7 +22,6 @@ private:
   struct fddinfo
   {
     bool insert;
-    bool writable;
     char *filename;
   };
   fddinfo fdd[4];
