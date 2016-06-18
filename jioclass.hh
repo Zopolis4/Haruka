@@ -20,7 +20,6 @@ class ioclass
 {
  public:
   virtual t16 memr (unsigned long addr) = 0;
-  virtual t16 memrc (unsigned long addr) = 0;
   virtual void memw (unsigned long addr, t16 v) = 0;
   virtual t16 in (t16 n) = 0;
   virtual void out (t16 n, t16 v) = 0;
@@ -37,7 +36,6 @@ private:
     t16 orreg1, orreg2;
   };
   struct_regs1ff regs1ff[31];
-  int clk;
   t16 memr_ (unsigned long adr);
   jvideo *videoclass;
   sdlsound *soundclass;
@@ -69,11 +67,8 @@ private:
 public:
   jioclass (jvideo *, sdlsound *, jmem *sys, jmem *prg,
 	    jmem *main, jmem *knj, jkey *key, jmem *cart, jfdc *dsk);
-  inline void zeroclk () { clk = 0; }
-  inline int getclk () { return clk; }
   bool timerset (int clk, bool stopredraw);
   t16 memr (unsigned long addr);
-  t16 memrc (unsigned long addr);
   void memw (unsigned long addr, t16 v);
   t16 in (t16 n);
   void out (t16 n, t16 v);

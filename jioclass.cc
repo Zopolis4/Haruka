@@ -173,14 +173,6 @@ jioclass::memr_ (unsigned long adr)
 t16
 jioclass::memr (unsigned long addr)
 {
-  clk += 4 * 3;
-  return memr_ (addr);
-}
-
-t16
-jioclass::memrc (unsigned long addr)
-{
-  clk += 9;
   return memr_ (addr);
 }
 
@@ -190,7 +182,6 @@ jioclass::memw (unsigned long addr, t16 v)
   t16 tmp, tmp2;
   int i;
 
-  clk += 4 * 3;
   tmp = (addr >> 15) & 037;
   tmp2 = 0;
   for (i = 0; i <= 10; i++)
@@ -255,7 +246,6 @@ jioclass::in (t16 n)
   t16 tmp, tmp2;
   int i;
 
-  clk += 4 * 3;
   tmp = (n >> 3) & 0177;
   for (i = 11; i <= 30; i++)
     {
@@ -345,7 +335,6 @@ jioclass::out (t16 n, t16 v)
   t16 tmp, tmp2;
   int i;
 
-  clk += 4 * 3;
   tmp = (n >> 3) & 0177;
   for (i = 11; i <= 30; i++)
     {
@@ -450,7 +439,7 @@ jioclass::out (t16 n, t16 v)
       break;
     case 0x84:
       soundclass->iowrite (v);
-      clk += 32 * 4;		// SN76489A needs 32 cycles
+      // FIXME: clk += 32 * 4;		// SN76489A needs 32 cycles
       break;
     }
 

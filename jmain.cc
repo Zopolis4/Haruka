@@ -302,25 +302,8 @@ sdlmainthread (void *p)
 			}
 		    }
 		}
-#if 0
-	      intclass.intcalland (intclass.getintmask () ^ 255);
-	      if ((intclass.getintcall () & (intclass.getintmask () ^ 255))
-		  && intclass.getlastint () == 0)
-		intclass.setlastint (emumain.hardint ((t16)intclass.
-						      getintcall () &
-						      (intclass.getintmask
-						       () ^ 255),
-						      (t16)8));
-#endif
-	      jio.zeroclk ();
-	      clk2 = 0;
-	      //clk2 += emumain.run () * 3;
-	      clk2 += run8088 () * 3;
-	      //clk2 += emumain.run () * 3;
-	      //clk2 += emumain.run () * 3;
-	      //clk2 += jio.getclk ();
+	      clk2 = run8088 () * 3;
 	      if (jio.timerset (clk2, redraw))
-		//emumain.nmiint ();
 		nmi8088 (1);
 	      clk += clk2;
 	      if (clk >= 238955)
@@ -328,39 +311,6 @@ sdlmainthread (void *p)
 		  redraw = !soundclass.get_hurry ();
 		  clk -= 238955;
 		}
-#if 0
-	      if (clk >= 4770 * 3 * 17)
-		{
-#if 0
-		  for (;;)
-		    {
-		      d = GetTickCount () - tickcount;
-		      if (d >= 0 && d < 17)
-			Sleep (17 - d);
-		      if (d >= 17)
-			break;
-		    }
-#endif
-#if 1
-		  const Uint32 speed = 17;
-		  for (;;)
-		    {
-		      d = SDL_GetTicks () - tickcount;
-		      if (d >= 0 && d < speed)
-			;//SDL_Delay (speed - d);
-		      if (d >= speed)
-			break;
-		    }
-		  clk -= 4770 * 3 * 17; //5500 /*4770*/ * 3 * 17;//d;
-		  if (d >= 34)
-		    redraw = false;
-		  else
-		    redraw = true;
-		  tickcount += speed;
-#endif
-		}
-#endif
-	      //Sleep (10);
 	    }
 	}
       }
