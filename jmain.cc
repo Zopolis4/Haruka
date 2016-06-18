@@ -39,18 +39,7 @@ extern "C"
   extern int run8088 (void);
 }
 
-jkey keybd;
-int keyconvtable[256];
 jioclass *jiop;
-SDL_Window *window;
-SDL_Surface *surface;
-#ifdef forWin
-HANDLE mainthreadhandle;
-DWORD mainthreadid;
-HINSTANCE hinst;
-COLORREF bkcl;
-HDC hdcscreen;
-#endif
 
 extern "C"
 {
@@ -108,6 +97,9 @@ struct maindata
   char *cart[6];		// D0, D8, E0, E8, F0, F8
   char *fdfile[4];
   jevent *event;
+  jkey *keybd;
+  SDL_Window *window;
+  SDL_Surface *surface;
 };
 
 int
@@ -154,7 +146,7 @@ sdlmainthread (void *p)
     }
 
   {
-    jvideo videoclass (window, surface, program, kanjirom);
+    jvideo videoclass (md->window, md->surface, program, kanjirom);
     jjoy joy;
     {
       stdfdc fdc (videoclass);
@@ -167,7 +159,7 @@ sdlmainthread (void *p)
       }
       {
 	jioclass jio (videoclass, soundclass, systemrom, program, mainram,
-		      kanjirom, keybd, cartrom, fdc, joy);
+		      kanjirom, *md->keybd, cartrom, fdc, joy);
 
 	jiop = &jio;
 	{
@@ -306,7 +298,7 @@ sdlmainthread (void *p)
 		}
 	      clk2 = run8088 () * 3;
 	      videoclass.clk (clk2, redraw);
-	      bool nmiflag = keybd.clkin (clk2);
+	      bool nmiflag = md->keybd->clkin (clk2);
 	      joy.clk (clk2);
 	      soundclass.clk (clk2);
 	      if (nmiflag)
@@ -342,9 +334,9 @@ main (int argc, char **argv)
 
   atexit(SDL_Quit);
 
-  window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED,
-			     SDL_WINDOWPOS_UNDEFINED, 640, 400, 0);
-  surface = SDL_GetWindowSurface (window);
+  md.window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED,
+				SDL_WINDOWPOS_UNDEFINED, 640, 400, 0);
+  md.surface = SDL_GetWindowSurface (md.window);
   md.endflag = 0;
   md.resetflag = 1;
   md.fdc = 0;
@@ -379,7 +371,9 @@ main (int argc, char **argv)
 	md.fdfile[j++] = argv[i];
     }
 
+  jkey keybd;
   jevent event (keybd);
+  md.keybd = &keybd;
   md.event = &event;
 
   SDL_Thread *thread = SDL_CreateThread (sdlmainthread, "main", &md);
