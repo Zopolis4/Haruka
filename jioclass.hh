@@ -67,7 +67,7 @@ private:
 public:
   jioclass (jvideo *, sdlsound *, jmem *sys, jmem *prg,
 	    jmem *main, jmem *knj, jkey *key, jmem *cart, jfdc *dsk);
-  bool timerset (int clk, bool stopredraw);
+  void clk (int clk);
   t16 memr (unsigned long addr);
   void memw (unsigned long addr, t16 v);
   t16 in (t16 n);

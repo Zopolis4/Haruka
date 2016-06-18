@@ -303,7 +303,11 @@ sdlmainthread (void *p)
 		    }
 		}
 	      clk2 = run8088 () * 3;
-	      if (jio.timerset (clk2, redraw))
+	      videoclass.clk (clk2, redraw);
+	      bool nmiflag = keybd.clkin (clk2);
+	      jio.clk (clk2);
+	      soundclass.clk (clk2);
+	      if (nmiflag)
 		nmi8088 (1);
 	      clk += clk2;
 	      if (clk >= 238955)

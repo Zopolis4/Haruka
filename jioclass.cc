@@ -521,16 +521,9 @@ jioclass::out (t16 n, t16 v)
     }
 }
 
-bool
-jioclass::timerset (int clk, bool redraw)
+void
+jioclass::clk (int d)
 {
-  int d;
-  bool retnmiflag;
-
-  retnmiflag = false;
-  d = clk;			// clk is 14.31818MHz
-  videoclass->clk (d, redraw);
-  retnmiflag = kbd->clkin (clk);
   if (d > joyx)
     joyx = 0;
   else
@@ -539,7 +532,4 @@ jioclass::timerset (int clk, bool redraw)
     joyy = 0;
   else
     joyy -= d;
-  soundclass->clk (d);
-  return retnmiflag;
 }
-
