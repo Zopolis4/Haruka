@@ -38,22 +38,6 @@ extern "C"
   extern int run8088 (void);
 }
 
-struct threaddata
-{
-#ifdef forWin
-  HWND hwnd;
-  HWND hwndaccess;
-#endif
-  int endflag;
-  int resetflag;
-  stdfdc *fdc;
-  bool pcjrflag;
-  bool warmflag;
-  bool origpcjrflag;
-  char *cart[6];		// D0, D8, E0, E8, F0, F8
-};
-
-threaddata mainthreaddata;
 jkey keybd;
 int keyconvtable[256];
 jioclass *jiop;
@@ -114,13 +98,21 @@ extern "C"
 
 struct maindata
 {
+  int endflag;
+  int resetflag;
+  stdfdc *fdc;
+  bool pcjrflag;
+  bool warmflag;
+  bool origpcjrflag;
+  char *cart[6];		// D0, D8, E0, E8, F0, F8
   char *fdfile[4];
+  jevent *event;
 };
 
-void
-mainthreadplus (void *p)
+int
+sdlmainthread (void *p)
 {
-  struct maindata *md = (struct maindata *)p;
+  maindata *md = static_cast <maindata *> (p);
   jmem systemrom (131072);
   jmem kanjirom (262144);
   jmem mainram (384 * 1024);	// extended 128KB x 3
@@ -131,7 +123,7 @@ mainthreadplus (void *p)
   sdlsound soundclass (11025, 1024 * 4);
   int clk, clk2;
 
-  if (mainthreaddata.origpcjrflag)
+  if (md->origpcjrflag)
     {
       systemrom.loadrom (65536, "bios.rom", 65536);
       // Extract font from the BIOS
@@ -164,12 +156,12 @@ mainthreadplus (void *p)
     jvideo videoclass (window, surface, &program, &kanjirom);
     {
       stdfdc fdc (&videoclass);
-      mainthreaddata.fdc = &fdc;
+      md->fdc = &fdc;
       {
 	int i;
 	for (i = 0; i < 4; i++)
 	  if (md->fdfile[i] != NULL)
-	    mainthreaddata.fdc->insert (i, md->fdfile[i]);
+	    md->fdc->insert (i, md->fdfile[i]);
       }
       {
 	jioclass jio (&videoclass, &soundclass, &systemrom,
@@ -180,13 +172,13 @@ mainthreadplus (void *p)
 	  bool redraw = false;
 
 	  clk = 0;
-	  while (!mainthreaddata.endflag)
+	  while (!md->endflag)
 	    {
-	      if (mainthreaddata.resetflag)
+	      if (md->resetflag)
 		{
 		  int i;
 
-		  mainthreaddata.resetflag = 0;
+		  md->resetflag = 0;
 		  //emumain.reset ();
 		  reset8088 ();
 		  jio.out (0xa0, 0); // Disable all interrupts
@@ -202,7 +194,7 @@ mainthreadplus (void *p)
 		    }
 		  //jio.memw (0x473, 0x12); // for warm start
 		  //jio.memw (0x472, 0x34);
-		  if (mainthreaddata.warmflag)
+		  if (md->warmflag)
 		    {
 		      mainram.write (0x473, 0x12);
 		      mainram.write (0x472, 0x34);
@@ -212,13 +204,13 @@ mainthreadplus (void *p)
 		  jio.set_base2_rom (false);
 		  for (i = 0 ; i < 6 ; i++)
 		    {
-		      if (mainthreaddata.cart[i])
+		      if (md->cart[i])
 			{
 			  int remain = 192 * 1024 - i * 32768;
 			  if (remain > 96 * 1024) // Cartridge max 96KB
 			    remain = 96 * 1024;
 			  int size = cartrom.loadrom2 (i * 32768,
-						       mainthreaddata.cart[i],
+						       md->cart[i],
 						       remain);
 			  cart_exist[i] = true;
 			  if (size > 32768 * 1 && i + 1 < 6)
@@ -233,14 +225,14 @@ mainthreadplus (void *p)
 		    jio.set_base2_rom (true);
 		  if (cart_exist[5])
 		    jio.set_base1_rom (true);
-		  if (mainthreaddata.pcjrflag)
+		  if (md->pcjrflag)
 		    {
 		      cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
 		      cartrom.loadrom (65536 * 2, "PCJR_F.ROM", 65536);
 		      jio.set_base1_rom (true);
 		      jio.set_base2_rom (true);
 		    }
-		  if (mainthreaddata.origpcjrflag)
+		  if (md->origpcjrflag)
 		    {
 		      // Set up memory and I/O space for PCjr BIOS
 		      jio.out (0x1ff, 0x08); // Main RAM
@@ -303,7 +295,7 @@ mainthreadplus (void *p)
 		      videoclass.in3da (true);
 		      videoclass.out3da (true, 3); // Mode control 2
 		      videoclass.out3da (true, 0x10); // Set PCjr memory map
-		      if (mainthreaddata.warmflag)
+		      if (md->warmflag)
 			{
 			  program.write (0x473, 0x12);
 			  program.write (0x472, 0x34);
@@ -375,19 +367,14 @@ mainthreadplus (void *p)
     }
   }
 }catch(char*p){fprintf(stderr,"%s\n",p);}catch(...){fprintf(stderr,"ERROR\n");}
-}
-
-int
-sdlmainthread (void *p)
-{
-  mainthreadplus (p);
+  md->event->push_quit_event ();
   return 0;
 }
 
 int
 main (int argc, char **argv)
 {
-  struct maindata md;
+  maindata md;
   int i, j;
 
   if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO |
@@ -402,46 +389,50 @@ main (int argc, char **argv)
   window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED,
 			     SDL_WINDOWPOS_UNDEFINED, 640, 400, 0);
   surface = SDL_GetWindowSurface (window);
-  mainthreaddata.endflag = 0;
-  mainthreaddata.resetflag = 1;
-  mainthreaddata.fdc = 0;
-  mainthreaddata.pcjrflag = false;
-  mainthreaddata.warmflag = false;
-  mainthreaddata.origpcjrflag = false;
+  md.endflag = 0;
+  md.resetflag = 1;
+  md.fdc = 0;
+  md.pcjrflag = false;
+  md.warmflag = false;
+  md.origpcjrflag = false;
   for (i = 0; i < 6; i++)
-  mainthreaddata.cart[i] = NULL;
+    md.cart[i] = NULL;
   for (i = 0; i < 4; i++)
     md.fdfile[i] = NULL;
   for (i = 1, j = 0; i < argc; i++)
     {
       if (strcmp (argv[i], "-j") == 0)
-	mainthreaddata.pcjrflag = true;
+	md.pcjrflag = true;
       else if (strcmp (argv[i], "-w") == 0)
-	mainthreaddata.warmflag = true;
+	md.warmflag = true;
       else if (strcmp (argv[i], "-o") == 0)
-	mainthreaddata.origpcjrflag = true;
+	md.origpcjrflag = true;
       else if (strcmp (argv[i], "-d0") == 0 && i + 1 < argc)
-	mainthreaddata.cart[0] = argv[++i];
+	md.cart[0] = argv[++i];
       else if (strcmp (argv[i], "-d8") == 0 && i + 1 < argc)
-	mainthreaddata.cart[1] = argv[++i];
+	md.cart[1] = argv[++i];
       else if (strcmp (argv[i], "-e0") == 0 && i + 1 < argc)
-	mainthreaddata.cart[2] = argv[++i];
+	md.cart[2] = argv[++i];
       else if (strcmp (argv[i], "-e8") == 0 && i + 1 < argc)
-	mainthreaddata.cart[3] = argv[++i];
+	md.cart[3] = argv[++i];
       else if (strcmp (argv[i], "-f0") == 0 && i + 1 < argc)
-	mainthreaddata.cart[4] = argv[++i];
+	md.cart[4] = argv[++i];
       else if (strcmp (argv[i], "-f8") == 0 && i + 1 < argc)
-	mainthreaddata.cart[5] = argv[++i];
+	md.cart[5] = argv[++i];
       else if (j < 4)
 	md.fdfile[j++] = argv[i];
     }
 
-  SDL_CreateThread (sdlmainthread, "main", &md);
-
   jevent event (&keybd);
+  md.event = &event;
+
+  SDL_Thread *thread = SDL_CreateThread (sdlmainthread, "main", &md);
 
   while (!event.get_quit_flag ())
     event.handle_event ();
+
+  md.endflag = 1;
+  int status;
+  SDL_WaitThread (thread, &status);
   return 0;
 }
-

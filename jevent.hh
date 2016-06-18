@@ -26,6 +26,7 @@ public:
   jevent (jkey *key);
   void handle_event ();
   void push_event (int code);
+  void push_quit_event ();
   bool get_quit_flag ()
   {
     return quit_flag;

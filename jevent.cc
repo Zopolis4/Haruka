@@ -96,8 +96,18 @@ jevent::push_event (int code)
   e.user.code = code;
   e.user.data1 = NULL;
   e.user.data2 = NULL;
-  if (SDL_PushEvent (&e) != 0)
+  if (SDL_PushEvent (&e) != 1)
     cerr << "SDL_PushEvent failed: " << SDL_GetError () << endl;	  
+}
+
+void
+jevent::push_quit_event ()
+{
+  SDL_Event e;
+
+  e.type = SDL_QUIT;
+  if (SDL_PushEvent (&e) != 1)
+    cerr << "SDL_PushEvent failed: " << SDL_GetError () << endl;
 }
 
 int
