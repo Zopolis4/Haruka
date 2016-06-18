@@ -24,6 +24,7 @@
 #include "sdlsound.hh"
 #include "jkey.hh"
 #include "jfdc.hh"
+#include "jjoy.hh"
 #include "jioclass.hh"
 
 extern "C"
@@ -36,9 +37,10 @@ extern "C"
 }
 
 jioclass::jioclass (jvideo &d2, sdlsound &d3, jmem &sys, jmem &prg, jmem &main,
-		    jmem &knj, jkey &key, jmem &cart, jfdc &dsk)
+		    jmem &knj, jkey &key, jmem &cart, jfdc &dsk, jjoy &js)
   : videoclass (d2), soundclass (d3), systemrom (sys), program (prg),
-    mainram (main), kanjirom (knj), kbd (key), cartrom (cart), fdc (dsk)
+    mainram (main), kanjirom (knj), kbd (key), cartrom (cart), fdc (dsk),
+    joy (js)
 {
   struct_regs1ff d[31] = {
     {0, 0, 0203, 0003, 0074, 0040}, // 00 IROM7
@@ -75,7 +77,6 @@ jioclass::jioclass (jvideo &d2, sdlsound &d3, jmem &sys, jmem &prg, jmem &main,
   };
   //regs1ff = d;
   memcpy ((void *)regs1ff, (void *)d, sizeof regs1ff);
-  joyx = joyy = joyb = 0;
   base1_rom = false;
   base2_rom = false;
 }
@@ -295,15 +296,7 @@ jioclass::in (t16 n)
 	}
       break;
     case 0x87:
-      {
-	t16 d;
-	d = joyb;
-	if (joyx)
-	  d |= 1;
-	if (joyy)
-	  d |= 2;
-	return d          | 3;
-      }
+      return joy.in201 ();
       break;
     }
   
@@ -391,37 +384,7 @@ jioclass::out (t16 n, t16 v)
 	  videoclass.out3df (v);
       break;
     case 0x86:
-      {
-	/* clk は合計すると 1 秒間で 14318180 */
-	// パルス幅  時間=24.2μ秒 + 0.011 * Rμ秒
-	// R は抵抗値 [Ω], 0 〜 100 [kΩ]
-	joyb = 12;
-	joyx = 50;
-	joyy = 50;
-#ifdef forWin
-	if (GetAsyncKeyState (VK_NUMPAD4))
-	  joyx = 20;	// パルス幅
-	if (GetAsyncKeyState (VK_NUMPAD6))
-	  joyx = 80;
-	if (GetAsyncKeyState (VK_NUMPAD8))
-	  joyy = 20;
-	if (GetAsyncKeyState (VK_NUMPAD2))
-	  joyy = 80;
-	if (GetAsyncKeyState (/*VK_Z*/'Z'))
-	  joyb |= 16;
-	if (GetAsyncKeyState (/*VK_X*/'X'))
-	  joyb |= 32;
-	if (GetAsyncKeyState ('A'))
-	  {
-	    static int f = 0;
-	    f ^= 16;
-	    joyb |= f;
-	  }
-#endif
-	joyb ^= 0xf0;
-	joyx = ((242 + 110 * joyx) * 1431818LL) / 1000000LL;
-	joyy = ((242 + 110 * joyy) * 1431818LL) / 1000000LL;
-      }
+      joy.out201 (v);
       break;
     case 0x84:
       soundclass.iowrite (v);
@@ -466,9 +429,6 @@ jioclass::out (t16 n, t16 v)
     {
       if (n == 0x10 && v == 0xf1)
 	;//allowdisplay = 1;
-      if (n == 0x10 && v == 0xff)
-	// Workaround for BIOS POST which accesses the joystick port
-	joyb = 0xf0;
 #define z(a,b) case 0x##a: fprintf (stderr, "MFG: %s\n", b); break
       if (n == 0x10)
 	{
@@ -505,17 +465,4 @@ jioclass::out (t16 n, t16 v)
       if (n == 0x11 || n == 0x12)
 	fprintf (stderr, "MFG port 0x%x code 0x%02x\n", n, v);
     }
-}
-
-void
-jioclass::clk (int d)
-{
-  if (d > joyx)
-    joyx = 0;
-  else
-    joyx -= d;
-  if (d > joyy)
-    joyy = 0;
-  else
-    joyy -= d;
 }

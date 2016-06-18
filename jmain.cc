@@ -27,6 +27,7 @@
 #include "stdfdc.hh"
 #include "jevent.hh"
 #include "sdlsound.hh"
+#include "jjoy.hh"
 #include "jioclass.hh"
 
 using std::cerr;
@@ -154,6 +155,7 @@ sdlmainthread (void *p)
 
   {
     jvideo videoclass (window, surface, program, kanjirom);
+    jjoy joy;
     {
       stdfdc fdc (videoclass);
       md->fdc = &fdc;
@@ -165,7 +167,7 @@ sdlmainthread (void *p)
       }
       {
 	jioclass jio (videoclass, soundclass, systemrom, program, mainram,
-		      kanjirom, keybd, cartrom, fdc);
+		      kanjirom, keybd, cartrom, fdc, joy);
 
 	jiop = &jio;
 	{
@@ -305,7 +307,7 @@ sdlmainthread (void *p)
 	      clk2 = run8088 () * 3;
 	      videoclass.clk (clk2, redraw);
 	      bool nmiflag = keybd.clkin (clk2);
-	      jio.clk (clk2);
+	      joy.clk (clk2);
 	      soundclass.clk (clk2);
 	      if (nmiflag)
 		nmi8088 (1);

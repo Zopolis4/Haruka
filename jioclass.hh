@@ -46,16 +46,15 @@ private:
   jkey &kbd;
   jmem &cartrom;
   jfdc &fdc;
+  jjoy &joy;
   bool base1_rom, base2_rom;
 
-  int joyx, joyy, joyb;
   int status1ff;
   t16 block1ff;
   t16 dat8255[3];
 public:
   jioclass (jvideo &d2, sdlsound &d3, jmem &sys, jmem &prg, jmem &main,
-	    jmem &knj, jkey &key, jmem &cart, jfdc &dsk);
-  void clk (int clk);
+	    jmem &knj, jkey &key, jmem &cart, jfdc &dsk, jjoy &js);
   t16 memr (unsigned long addr);
   void memw (unsigned long addr, t16 v);
   t16 in (t16 n);

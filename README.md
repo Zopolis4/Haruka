@@ -94,4 +94,4 @@ Run 5511emu.
 * "ERROR H" is diskette error. The error is not displayed on warm boot. Probably there is a bug in diskette controller emulation.
 * Serial port emulation is not implemented. No error is reported by BIOS since it is an expansion card on JX. In original PCjr mode the BIOS may report an error.
 * BIOS continues booting when a kj-rom checksum test fails because HLT instruction is not properly emulated.
-* Joystick is emulated but not controllable.
+* Joystick is emulated as not connected.
