@@ -87,7 +87,7 @@ extern "C"
   {
     jiop->memw (addr, v & 255);
     *slow = 4;
-    /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) *slow += 6;
+    /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) *slow = 6;
   }
   t16
   ioport_read (t20 addr, int *slow)
