@@ -816,11 +816,13 @@ reg12 (t16 n)
   return tmp;
 }
 
+#if 0				/* Unused */
 static t16
 sreg2 (t16 n)
 {
   return sregs[n];
 }
+#endif
 
 static t16
 getrm1 (void)
@@ -974,6 +976,7 @@ letrc2 (t16 v)
   ca (1), letr2 (v);
 }
 
+#if 0				/* Unused */
 static t16
 getr12 (void)
 {
@@ -990,6 +993,7 @@ getrc12 (void)
 {
   return ca (1), getr12 ();
 }
+#endif
 
 static t16
 getmem1 (t16 seg, t16 ofs)
@@ -1917,6 +1921,7 @@ getaccc2 (void)
   return ca (1), getacc2 ();
 }
 
+#if 0				/* Unused */
 static t16
 getacc12 (void)
 {
@@ -1928,6 +1933,7 @@ getaccc12 (void)
 {
   return ca (1), getacc12 ();
 }
+#endif
 
 static void
 letacc1 (t16 v)

@@ -177,9 +177,7 @@ mainthreadplus (void *p)
 	jiop = &jio;
 	{
 	  bool redraw = false;
-	  Uint32 tickcount, d;
 
-	  tickcount = SDL_GetTicks ();
 	  clk = 0;
 	  while (!mainthreaddata.endflag)
 	    {

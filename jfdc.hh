@@ -26,7 +26,7 @@ private:
 protected:
   t16 step_rate, param1, drive, cylinder, head, sector, bytes_per_sector, eot,
     gap_length, dtl, sectors_per_track, filler;
-  char *p;
+  const char *p;
   t16 st[7];
   unsigned char data[8192];
   int datai, datasize;

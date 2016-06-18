@@ -661,7 +661,7 @@ jvideo::convsub (unsigned char *p, int vp)
 void
 jvideo::conv ()
 {
-  int i, j, d;
+  int i;
   int r1, r2;
 
   //mode1[0] = mode1[1] = 0x13;
@@ -797,7 +797,6 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem *program,
 void
 jvideo::draw ()
 {
-  unsigned long *p;
   unsigned char *q;
   int i;
   static SDL_Color cl[16]={
@@ -819,7 +818,6 @@ jvideo::draw ()
     {r:0xff,g:0xff,b:0xff},
   };
 
-  p = bits;
   q = drawdata;
   if ((superimpose & 12) == 0)
     {

@@ -22,7 +22,7 @@
 #include "jfdc.hh"
 #include "stdfdc.hh"
 #include <fstream>
-#include <strstream>
+#include <sstream>
 #include <iomanip>
 #include <cstring>
 #include <cstdlib>
@@ -81,12 +81,11 @@ stdfdc::read ()
 	  if ((size_t)datasize > sizeof (data))
 	    datasize = sizeof (data);
 	  {
-	    char q[strlen (fdd[drive & 3].filename) + 5];
-	    ostrstream s (q, sizeof (q), ios::out);
+	    ostringstream s;
 
 	    s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0')
-	      << (cylinder * 2 + head) << ends;
-	    f.open (s.str (), ios::in | ios::binary);
+	      << (cylinder * 2 + head);
+	    f.open (s.str ().c_str (), ios::in | ios::binary);
 	    if (!f)
 	      {
 		f.open (fdd[drive & 3].filename, ios::in | ios::binary);
@@ -197,12 +196,11 @@ stdfdc::preformat ()
 	    datasize = sizeof (data);
 	  if (0)
 	    {
-	      char q[strlen (fdd[drive & 3].filename) + 5];
-	      ostrstream s (q, sizeof (q), ios::out);
+	      ostringstream s;
 
 	      s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0')
-		<< (cylinder * 2 + head) << ends;
-	      f.open (s.str (), ios::in | ios::out | ios::binary);
+		<< (cylinder * 2 + head);
+	      f.open (s.str ().c_str (), ios::in | ios::out | ios::binary);
 	      f.close ();
 	      if (!f.good ())
 		{
@@ -308,8 +306,7 @@ stdfdc::format ()
 	  break;
 	case 3:
 	  {
-	    char q[strlen (fdd[drive & 3].filename) + 5];
-	    ostrstream s (q, sizeof (q), ios::out);
+	    ostringstream s;
 	    unsigned int i;
 	    char buf[1024];
 
@@ -317,8 +314,8 @@ stdfdc::format ()
 	      {
 		memset (buf, filler, sizeof (buf));
 		s << fdd[drive & 3].filename << '.' << setw (3)
-		  << setfill ('0') << (data[i] * 2 + data[i + 1]) << ends;
-		f.open (s.str (), ios::in | ios::binary);
+		  << setfill ('0') << (data[i] * 2 + data[i + 1]);
+		f.open (s.str ().c_str (), ios::in | ios::binary);
 		f.close ();
 		if (!f.good ())
 		  {
@@ -330,7 +327,7 @@ stdfdc::format ()
 		      sectornotfound = true;
 		    break;
 		  }
-		f.open (s.str (), ios::in | ios :: out | ios::binary);
+		f.open (s.str ().c_str (), ios::in | ios :: out | ios::binary);
 		if (!f.good ())
 		  {
 		    writeprotect = true;
@@ -442,12 +439,11 @@ stdfdc::prewrite ()
 	  if ((size_t)datasize > sizeof (data))
 	    datasize = sizeof (data);
 	  {
-	    char q[strlen (fdd[drive & 3].filename) + 5];
-	    ostrstream s (q, sizeof (q), ios::out);
+	    ostringstream s;
 
 	    s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0')
-	      << (cylinder * 2 + head) << ends;
-	    f.open (s.str (), ios::in | ios::binary);
+	      << (cylinder * 2 + head);
+	    f.open (s.str ().c_str (), ios::in | ios::binary);
 	    f.close ();
 	    if (!f.good ())
 	      {
@@ -459,7 +455,7 @@ stdfdc::prewrite ()
 		  sectornotfound = true;
 		break;
 	      }
-	    f.open (s.str (), ios::in | ios :: out | ios::binary);
+	    f.open (s.str ().c_str (), ios::in | ios :: out | ios::binary);
 	    f.close ();
 	    if (!f.good ())
 	      {
@@ -550,12 +546,11 @@ stdfdc::write ()
 	  break;
 	case 3:
 	  {
-	    char q[strlen (fdd[drive & 3].filename) + 5];
-	    ostrstream s (q, sizeof (q), ios::out);
+	    ostringstream s;
 
 	    s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0')
-	      << (cylinder * 2 + head) << ends;
-	    f.open (s.str (), ios::in | ios::binary);
+	      << (cylinder * 2 + head);
+	    f.open (s.str ().c_str (), ios::in | ios::binary);
 	    f.close ();
 	    if (!f.good ())
 	      {
@@ -567,7 +562,7 @@ stdfdc::write ()
 		  sectornotfound = true;
 		break;
 	      }
-	    f.open (s.str (), ios::in | ios :: out | ios::binary);
+	    f.open (s.str ().c_str (), ios::in | ios :: out | ios::binary);
 	    if (!f.good ())
 	      {
 		writeprotect = true;
