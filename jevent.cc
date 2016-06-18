@@ -18,12 +18,13 @@
 
 #include <iostream>
 
-using namespace std;
-
 #include "SDL.h"
 #include "jtype.hh"
 #include "jkey.hh"
 #include "jevent.hh"
+
+using std::cerr;
+using std::endl;
 
 extern "C"
 {

@@ -21,10 +21,12 @@
 #include <cstdio>
 #include <iostream>
 
-using namespace std;
-
 #include "SDL.h"
 #include "sdlsound.hh"
+
+using std::cout;
+using std::cerr;
+using std::endl;
 
 extern "C"
 {

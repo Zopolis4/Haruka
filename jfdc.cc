@@ -23,8 +23,6 @@
 #include <cctype>
 #include <cstdio>
 
-using namespace std;
-
 extern "C"
 {
   extern void trigger_irq8259 (unsigned int);

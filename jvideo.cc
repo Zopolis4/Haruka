@@ -18,11 +18,12 @@
 
 #include <iostream>
 
-using namespace std;
-
 #include "jtype.hh"
 #include "jmem.hh"
 #include "jvideo.hh"
+
+using std::cerr;
+using std::endl;
 
 extern "C"
 {

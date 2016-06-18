@@ -16,8 +16,6 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-using namespace std;
-
 #include <iostream>
 #include <cstdio>
 #include "SDL.h"
@@ -30,6 +28,9 @@ using namespace std;
 #include "jevent.hh"
 #include "sdlsound.hh"
 #include "jioclass.hh"
+
+using std::cerr;
+using std::endl;
 
 extern "C"
 {
