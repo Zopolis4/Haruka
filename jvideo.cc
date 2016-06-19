@@ -241,16 +241,25 @@ jvideo::convsub (unsigned char *p, int vp)
 		    addr = d1 << 5;
 		  else
 		    {
+		      int code, right;
 		      if (!(d2 & 8))
 			{
 			  d3 = readmem.read ((k + 2) & maskdat);
-			  addr = ((d1 * 256 + d3) & 0x1fff) << 5;
+			  code = d1 * 256 + d3;
+			  right = 0;
 			}
 		      else
 			{
 			  d3 = readmem.read ((k-2) & maskdat);
-			  addr = (((d3 * 256 + d1) & 0x1fff) << 5) + 1;
+			  code = d3 * 256 + d1;
+			  right = 1;
 			}
+		      if (code >= 0xf000) // Gaiji support
+			{	// FIXME: hardware compares address?
+			  code &= 0x3f;
+			  code |= 0x8400;
+			}
+		      addr = ((code & 0x1fff) << 5) + right;
 		    }
 		  for (m = 0 ; m < 16 ; m++)
 		    {

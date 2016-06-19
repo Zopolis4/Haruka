@@ -127,7 +127,14 @@ jioclass::memr_ (unsigned long adr)
       dat = cartrom.read (32768 * 5 + (adr & 0x7fff));
       break;
     case 7:
-      dat = kanjirom.read (adr & 0x3ffff);
+      {
+	t16 x = (adr & 0x3ffff) + 0x80000;
+
+	if (x >= 0x88000 && x <= 0x8ffff)
+	  dat = kanjirom.read (0x8000 | (adr & 0x7ff));
+	else
+	  dat = kanjirom.read (adr & 0x3ffff);
+      }
       break;
     case 8:
       if (videoclass.pcjrmem ())
@@ -198,8 +205,8 @@ jioclass::memw (unsigned long addr, t16 v)
       {
 	t16 x = (addr & 0x3ffff) + 0x80000;
 
-	if (x >= 0x88000 && x <= 0x887ff)
-	  kanjirom.write (addr & 0x3ffff, v);
+	if (x >= 0x88000 && x <= 0x8ffff)
+	  kanjirom.write (0x8000 | (addr & 0x7ff), v);
       }
       break;
     case 8:
