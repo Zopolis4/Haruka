@@ -17,7 +17,6 @@
 */
 
 #include <iostream>
-#include <cstdio>
 #include "SDL.h"
 #include "jtype.hh"
 #include "jmem.hh"
@@ -112,44 +111,46 @@ sdlmainthread (void *p)
   jmem program (128 * 1024);	// base 64KB + extended 64KB
   jmem cartrom (192 * 1024);	// D0000-FFFFF
   bool cart_exist[6] = { false, false, false, false, false, false };
-  try{
-  sdlsound soundclass (11025, 1024 * 4);
-  int clk, clk2;
-
-  if (md->origpcjrflag)
+  try
     {
-      systemrom.loadrom (65536, "bios.rom", 65536);
-      // Extract font from the BIOS
-      int i;
-      for (i = 0; i < 128; i++)
+      if (md->origpcjrflag)
 	{
-	  int j;
-	  for (j = 0; j < 8; j++)
+	  systemrom.loadrom (65536, "bios.rom", 65536);
+	  // Extract font from the BIOS
+	  int i;
+	  for (i = 0; i < 128; i++)
 	    {
-	      // Code 128-255 from F000:E05E-
-	      kanjirom.write (i * 32 + j * 2 + 0x1011,
-			      systemrom.read (0x1e05e + i * 8 + j));
-	      // Code 0-127 from F000:FA6E-
-	      kanjirom.write (i * 32 + j * 2 + 0x11,
-			      systemrom.read (0x1fa6e + i * 8 + j));
+	      int j;
+	      for (j = 0; j < 8; j++)
+		{
+		  // Code 128-255 from F000:E05E-
+		  kanjirom.write (i * 32 + j * 2 + 0x1011,
+				  systemrom.read (0x1e05e + i * 8 + j));
+		  // Code 0-127 from F000:FA6E-
+		  kanjirom.write (i * 32 + j * 2 + 0x11,
+				  systemrom.read (0x1fa6e + i * 8 + j));
+		}
 	    }
 	}
-    }
-  else
-    {
-      systemrom.loadrom (0, "BASE_E.ROM", 65536);
-      systemrom.loadrom (65536, "BASE_F.ROM", 65536);
-      kanjirom.loadrom (65536 * 0, "FONT_8.ROM", 65536);
-      kanjirom.loadrom (65536 * 1, "FONT_9.ROM", 65536);
-      kanjirom.loadrom (65536 * 2, "FONT_A.ROM", 65536);
-      kanjirom.loadrom (65536 * 3, "FONT_B.ROM", 65536);
-    }
+      else
+	{
+	  systemrom.loadrom (0, "BASE_E.ROM", 65536);
+	  systemrom.loadrom (65536, "BASE_F.ROM", 65536);
+	  kanjirom.loadrom (65536 * 0, "FONT_8.ROM", 65536);
+	  kanjirom.loadrom (65536 * 1, "FONT_9.ROM", 65536);
+	  kanjirom.loadrom (65536 * 2, "FONT_A.ROM", 65536);
+	  kanjirom.loadrom (65536 * 3, "FONT_B.ROM", 65536);
+	}
 
-  {
-    jvideo videoclass (md->window, md->surface, program, kanjirom);
-    jjoy joy;
-    {
+      sdlsound soundclass (11025, 1024 * 4);
+      jvideo videoclass (md->window, md->surface, program, kanjirom);
+      jjoy joy;
       stdfdc fdc (videoclass);
+      jioclass jio (videoclass, soundclass, systemrom, program, mainram,
+		    kanjirom, *md->keybd, cartrom, fdc, joy);
+      int clk, clk2;
+      bool redraw = false;
+
       md->fdc = &fdc;
       {
 	int i;
@@ -157,164 +158,163 @@ sdlmainthread (void *p)
 	  if (md->fdfile[i] != NULL)
 	    md->fdc->insert (i, md->fdfile[i]);
       }
-      {
-	jioclass jio (videoclass, soundclass, systemrom, program, mainram,
-		      kanjirom, *md->keybd, cartrom, fdc, joy);
 
-	jiop = &jio;
+      jiop = &jio;
+
+      clk = 0;
+      while (!md->endflag)
 	{
-	  bool redraw = false;
-
-	  clk = 0;
-	  while (!md->endflag)
+	  if (md->resetflag)
 	    {
-	      if (md->resetflag)
-		{
-		  int i;
+	      int i;
 
-		  md->resetflag = 0;
-		  //emumain.reset ();
-		  reset8088 ();
-		  jio.out (0xa0, 0); // Disable all interrupts
-		  jio.in (0x1ff);
-		  jio.out (0x1ff, 0); // System ROM
-		  jio.out (0x1ff, 0xbc); // E0000-FFFFF
-		  jio.out (0x1ff, 0x23); //
-		  for (i = 1 ; i <= 10 ; i++)
+	      md->resetflag = 0;
+	      //emumain.reset ();
+	      reset8088 ();
+	      jio.out (0xa0, 0); // Disable all interrupts
+	      jio.in (0x1ff);
+	      jio.out (0x1ff, 0); // System ROM
+	      jio.out (0x1ff, 0xbc); // E0000-FFFFF
+	      jio.out (0x1ff, 0x23); //
+	      for (i = 1 ; i <= 10 ; i++)
+		{
+		  jio.out (0x1ff, i);
+		  jio.out (0x1ff, 0);
+		  jio.out (0x1ff, 0);
+		}
+	      //jio.memw (0x473, 0x12); // for warm start
+	      //jio.memw (0x472, 0x34);
+	      if (md->warmflag)
+		{
+		  mainram.write (0x473, 0x12);
+		  mainram.write (0x472, 0x34);
+		}
+	      cartrom.clearrom ();
+	      jio.set_base1_rom (false);
+	      jio.set_base2_rom (false);
+	      for (i = 0 ; i < 6 ; i++)
+		{
+		  if (md->cart[i])
 		    {
-		      jio.out (0x1ff, i);
-		      jio.out (0x1ff, 0);
-		      jio.out (0x1ff, 0);
+		      int remain = 192 * 1024 - i * 32768;
+		      if (remain > 96 * 1024) // Cartridge max 96KB
+			remain = 96 * 1024;
+		      int size = cartrom.loadrom2 (i * 32768,
+						   md->cart[i],
+						   remain);
+		      cart_exist[i] = true;
+		      if (size > 32768 * 1 && i + 1 < 6)
+			i++;
+		      cart_exist[i] = true;
+		      if (size > 32768 * 2 && i + 1 < 6)
+			i++;
+		      cart_exist[i] = true;
 		    }
-		  //jio.memw (0x473, 0x12); // for warm start
-		  //jio.memw (0x472, 0x34);
-		  if (md->warmflag)
+		}
+	      if (cart_exist[4])
+		jio.set_base2_rom (true);
+	      if (cart_exist[5])
+		jio.set_base1_rom (true);
+	      if (md->pcjrflag)
+		{
+		  cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
+		  cartrom.loadrom (65536 * 2, "PCJR_F.ROM", 65536);
+		  jio.set_base1_rom (true);
+		  jio.set_base2_rom (true);
+		}
+	      if (md->origpcjrflag)
+		{
+		  // Set up memory and I/O space for PCjr BIOS
+		  jio.out (0x1ff, 0x08); // Main RAM
+		  jio.out (0x1ff, 0xa0); // 00000-1FFFF
+		  jio.out (0x1ff, 0x63); // RW, Mask
+		  jio.out (0x1ff, 0x09); // VRAM1
+		  jio.out (0x1ff, 0xf7); // B8000-BFFFF
+		  jio.out (0x1ff, 0x60); // RW, Mask
+		  for (i = 0x80; i < 0x93; i++)
 		    {
-		      mainram.write (0x473, 0x12);
-		      mainram.write (0x472, 0x34);
-		    }
-		  cartrom.clearrom ();
-		  jio.set_base1_rom (false);
-		  jio.set_base2_rom (false);
-		  for (i = 0 ; i < 6 ; i++)
-		    {
-		      if (md->cart[i])
+		      jio.out (0x1ff, i); // I/O
+		      switch (i)
 			{
-			  int remain = 192 * 1024 - i * 32768;
-			  if (remain > 96 * 1024) // Cartridge max 96KB
-			    remain = 96 * 1024;
-			  int size = cartrom.loadrom2 (i * 32768,
-						       md->cart[i],
-						       remain);
-			  cart_exist[i] = true;
-			  if (size > 32768 * 1 && i + 1 < 6)
-			    i++;
-			  cart_exist[i] = true;
-			  if (size > 32768 * 2 && i + 1 < 6)
-			    i++;
-			  cart_exist[i] = true;
+			case 0x8d:		     // GA2B
+			case 0x8e:		     // GA03
+			case 0x90:		     // PG2
+			  jio.out (0x1ff, 0x00); // Disable
+			  jio.out (0x1ff, 0x00);
+			  break;
+			case 0x85:		     // FDC
+			  jio.out (0x1ff, 0x9e); // 00F0-00FF
+			  jio.out (0x1ff, 0x01);
+			  break;
+			default:
+			  jio.out (0x1ff, 0x80); // Enable
+			  jio.out (0x1ff, 0x00);
 			}
 		    }
-		  if (cart_exist[4])
-		    jio.set_base2_rom (true);
-		  if (cart_exist[5])
-		    jio.set_base1_rom (true);
-		  if (md->pcjrflag)
+		  // Activate cartridge ROMs
+		  jio.out (0x1ff, 0);    // System ROM
+		  if (cart_exist[5])     // Cartridge in F8000-FFFFF
 		    {
-		      cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
-		      cartrom.loadrom (65536 * 2, "PCJR_F.ROM", 65536);
-		      jio.set_base1_rom (true);
-		      jio.set_base2_rom (true);
+		      jio.out (0x1ff, 0x00); // Disabled
+		      jio.out (0x1ff, 0x00);
 		    }
-		  if (md->origpcjrflag)
+		  else if (cart_exist[4]) // Cartridge in F0000-F7FFF
 		    {
-		      // Set up memory and I/O space for PCjr BIOS
-		      jio.out (0x1ff, 0x08); // Main RAM
-		      jio.out (0x1ff, 0xa0); // 00000-1FFFF
-		      jio.out (0x1ff, 0x63); // RW, Mask
-		      jio.out (0x1ff, 0x09); // VRAM1
-		      jio.out (0x1ff, 0xf7); // B8000-BFFFF
-		      jio.out (0x1ff, 0x60); // RW, Mask
-		      for (i = 0x80; i < 0x93; i++)
+		      jio.out (0x1ff, 0xbf); // F8000-FFFFF
+		      jio.out (0x1ff, 0x20); //
+		    }
+		  else
+		    {
+		      jio.out (0x1ff, 0xbe); // F0000-FFFFF
+		      jio.out (0x1ff, 0x21); //
+		    }
+		  for (i = 0; i < 6; i++)
+		    {
+		      jio.out (0x1ff, i + 1); // Cartridge ROM
+		      if (cart_exist[i])
 			{
-			  jio.out (0x1ff, i); // I/O
-			  switch (i)
-			    {
-			    case 0x8d:		     // GA2B
-			    case 0x8e:		     // GA03
-			    case 0x90:		     // PG2
-			      jio.out (0x1ff, 0x00); // Disable
-			      jio.out (0x1ff, 0x00);
-			      break;
-			    case 0x85:		     // FDC
-			      jio.out (0x1ff, 0x9e); // 00F0-00FF
-			      jio.out (0x1ff, 0x01);
-			      break;
-			    default:
-			      jio.out (0x1ff, 0x80); // Enable
-			      jio.out (0x1ff, 0x00);
-			    }
+			  jio.out (0x1ff, 0xba + i); // Enabled
+			  jio.out (0x1ff, 0x20);
 			}
-		      // Activate cartridge ROMs
-		      jio.out (0x1ff, 0);    // System ROM
-		      if (cart_exist[5])     // Cartridge in F8000-FFFFF
+		      else
 			{
 			  jio.out (0x1ff, 0x00); // Disabled
 			  jio.out (0x1ff, 0x00);
 			}
-		      else if (cart_exist[4]) // Cartridge in F0000-F7FFF
-			{
-			  jio.out (0x1ff, 0xbf); // F8000-FFFFF
-			  jio.out (0x1ff, 0x20); //
-			}
-		      else
-			{
-			  jio.out (0x1ff, 0xbe); // F0000-FFFFF
-			  jio.out (0x1ff, 0x21); //
-			}
-		      for (i = 0; i < 6; i++)
-			{
-			  jio.out (0x1ff, i + 1); // Cartridge ROM
-			  if (cart_exist[i])
-			    {
-			      jio.out (0x1ff, 0xba + i); // Enabled
-			      jio.out (0x1ff, 0x20);
-			    }
-			  else
-			    {
-			      jio.out (0x1ff, 0x00); // Disabled
-			      jio.out (0x1ff, 0x00);
-			    }
-			}
-		      videoclass.in3da (true);
-		      videoclass.out3da (true, 3); // Mode control 2
-		      videoclass.out3da (true, 0x10); // Set PCjr memory map
-		      if (md->warmflag)
-			{
-			  program.write (0x473, 0x12);
-			  program.write (0x472, 0x34);
-			}
+		    }
+		  videoclass.in3da (true);
+		  videoclass.out3da (true, 3); // Mode control 2
+		  videoclass.out3da (true, 0x10); // Set PCjr memory map
+		  if (md->warmflag)
+		    {
+		      program.write (0x473, 0x12);
+		      program.write (0x472, 0x34);
 		    }
 		}
-	      clk2 = run8088 () * 3;
-	      videoclass.clk (clk2, redraw);
-	      bool nmiflag = md->keybd->clkin (clk2);
-	      joy.clk (clk2);
-	      soundclass.clk (clk2);
-	      if (nmiflag)
-		nmi8088 (1);
-	      clk += clk2;
-	      if (clk >= 238955)
-		{
-		  redraw = !soundclass.get_hurry ();
-		  clk -= 238955;
-		}
+	    }
+	  clk2 = run8088 () * 3;
+	  videoclass.clk (clk2, redraw);
+	  bool nmiflag = md->keybd->clkin (clk2);
+	  joy.clk (clk2);
+	  soundclass.clk (clk2);
+	  if (nmiflag)
+	    nmi8088 (1);
+	  clk += clk2;
+	  if (clk >= 238955)
+	    {
+	      redraw = !soundclass.get_hurry ();
+	      clk -= 238955;
 	    }
 	}
-      }
     }
-  }
-}catch(char*p){fprintf(stderr,"%s\n",p);}catch(...){fprintf(stderr,"ERROR\n");}
+  catch (char *p)
+    {
+      std::cerr << p << std::endl;
+    }
+  catch (...)
+    {
+      std::cerr << "ERROR" << std::endl;
+    }
   md->event->push_quit_event ();
   return 0;
 }
