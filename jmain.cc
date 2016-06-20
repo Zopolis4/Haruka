@@ -28,6 +28,7 @@
 #include "sdlsound.hh"
 #include "jjoy.hh"
 #include "jioclass.hh"
+#include "jbus.hh"
 
 using std::cerr;
 using std::endl;
@@ -38,7 +39,7 @@ extern "C"
   extern int run8088 (void);
 }
 
-jioclass *jiop;
+jbus bus;
 
 extern "C"
 {
@@ -49,34 +50,26 @@ extern "C"
   t16
   memory_read (t20 addr, int *slow)
   {
-    t16 r;
-
-    r = jiop->memr (addr) & 255;
     *slow = 4;
-    /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) *slow = 6;
-    return r;
+    return bus.memory_read (addr, *slow);
   }
   void
   memory_write (t20 addr, t16 v, int *slow)
   {
-    jiop->memw (addr, v & 255);
     *slow = 4;
-    /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) *slow = 6;
+    bus.memory_write (addr, v, *slow);
   }
   t16
   ioport_read (t20 addr, int *slow)
   {
-    t16 r;
-
-    r = jiop->in (addr & 65535);
     *slow = 6;
-    return r;
+    return bus.ioport_read (addr, *slow);
   }
   void
   ioport_write (t20 addr, t16 v, int *slow)
   {
-    jiop->out (addr & 65535, v & 255);
     *slow = 6;
+    bus.ioport_write (addr, v, *slow);
   }
   void
   interrupt_nmi (void)
@@ -100,6 +93,52 @@ struct maindata
   SDL_Window *window;
   SDL_Surface *surface;
 };
+
+class jioclass_io : public jbus::io
+{
+  jioclass &obj;
+public:
+  jioclass_io (jbus &bus, jioclass &ioobj);
+  void memory_read (unsigned int addr, unsigned int &val, int &cycles);
+  void memory_write (unsigned int addr, unsigned int val, int &cycles);
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles);
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles);
+};
+
+jioclass_io::jioclass_io (jbus &bus, jioclass &ioobj)
+  : io (bus), obj (ioobj)
+{
+}
+
+void
+jioclass_io::memory_read (unsigned int addr, unsigned int &val, int &cycles)
+{
+  val = obj.memr (addr);
+  cycles = 4;
+  /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) cycles = 6;
+}
+
+void
+jioclass_io::memory_write (unsigned int addr, unsigned int val, int &cycles)
+{
+  obj.memw (addr, val);
+  cycles = 4;
+  /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) cycles = 6;
+}
+
+void
+jioclass_io::ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+{
+  val = obj.in (addr);
+  cycles = 6;
+}
+
+void
+jioclass_io::ioport_write (unsigned int addr, unsigned int val, int &cycles)
+{
+  obj.out (addr, val);
+  cycles = 6;
+}
 
 int
 sdlmainthread (void *p)
@@ -148,6 +187,7 @@ sdlmainthread (void *p)
       stdfdc fdc (videoclass);
       jioclass jio (videoclass, soundclass, systemrom, program, mainram,
 		    kanjirom, *md->keybd, cartrom, fdc, joy);
+      jioclass_io jio_io (bus, jio);
       int clk, clk2;
       bool redraw = false;
 
@@ -159,8 +199,6 @@ sdlmainthread (void *p)
 	    md->fdc->insert (i, md->fdfile[i]);
       }
 
-      jiop = &jio;
-
       clk = 0;
       while (!md->endflag)
 	{
@@ -171,16 +209,16 @@ sdlmainthread (void *p)
 	      md->resetflag = 0;
 	      //emumain.reset ();
 	      reset8088 ();
-	      jio.out (0xa0, 0); // Disable all interrupts
-	      jio.in (0x1ff);
-	      jio.out (0x1ff, 0); // System ROM
-	      jio.out (0x1ff, 0xbc); // E0000-FFFFF
-	      jio.out (0x1ff, 0x23); //
+	      bus.ioport_write (0xa0, 0); // Disable all interrupts
+	      bus.ioport_read (0x1ff);
+	      bus.ioport_write (0x1ff, 0); // System ROM
+	      bus.ioport_write (0x1ff, 0xbc); // E0000-FFFFF
+	      bus.ioport_write (0x1ff, 0x23); //
 	      for (i = 1 ; i <= 10 ; i++)
 		{
-		  jio.out (0x1ff, i);
-		  jio.out (0x1ff, 0);
-		  jio.out (0x1ff, 0);
+		  bus.ioport_write (0x1ff, i);
+		  bus.ioport_write (0x1ff, 0);
+		  bus.ioport_write (0x1ff, 0);
 		}
 	      //jio.memw (0x473, 0x12); // for warm start
 	      //jio.memw (0x472, 0x34);
@@ -225,61 +263,61 @@ sdlmainthread (void *p)
 	      if (md->origpcjrflag)
 		{
 		  // Set up memory and I/O space for PCjr BIOS
-		  jio.out (0x1ff, 0x08); // Main RAM
-		  jio.out (0x1ff, 0xa0); // 00000-1FFFF
-		  jio.out (0x1ff, 0x63); // RW, Mask
-		  jio.out (0x1ff, 0x09); // VRAM1
-		  jio.out (0x1ff, 0xf7); // B8000-BFFFF
-		  jio.out (0x1ff, 0x60); // RW, Mask
+		  bus.ioport_write (0x1ff, 0x08); // Main RAM
+		  bus.ioport_write (0x1ff, 0xa0); // 00000-1FFFF
+		  bus.ioport_write (0x1ff, 0x63); // RW, Mask
+		  bus.ioport_write (0x1ff, 0x09); // VRAM1
+		  bus.ioport_write (0x1ff, 0xf7); // B8000-BFFFF
+		  bus.ioport_write (0x1ff, 0x60); // RW, Mask
 		  for (i = 0x80; i < 0x93; i++)
 		    {
-		      jio.out (0x1ff, i); // I/O
+		      bus.ioport_write (0x1ff, i); // I/O
 		      switch (i)
 			{
 			case 0x8d:		     // GA2B
 			case 0x8e:		     // GA03
 			case 0x90:		     // PG2
-			  jio.out (0x1ff, 0x00); // Disable
-			  jio.out (0x1ff, 0x00);
+			  bus.ioport_write (0x1ff, 0x00); // Disable
+			  bus.ioport_write (0x1ff, 0x00);
 			  break;
 			case 0x85:		     // FDC
-			  jio.out (0x1ff, 0x9e); // 00F0-00FF
-			  jio.out (0x1ff, 0x01);
+			  bus.ioport_write (0x1ff, 0x9e); // 00F0-00FF
+			  bus.ioport_write (0x1ff, 0x01);
 			  break;
 			default:
-			  jio.out (0x1ff, 0x80); // Enable
-			  jio.out (0x1ff, 0x00);
+			  bus.ioport_write (0x1ff, 0x80); // Enable
+			  bus.ioport_write (0x1ff, 0x00);
 			}
 		    }
 		  // Activate cartridge ROMs
-		  jio.out (0x1ff, 0);    // System ROM
+		  bus.ioport_write (0x1ff, 0);    // System ROM
 		  if (cart_exist[5])     // Cartridge in F8000-FFFFF
 		    {
-		      jio.out (0x1ff, 0x00); // Disabled
-		      jio.out (0x1ff, 0x00);
+		      bus.ioport_write (0x1ff, 0x00); // Disabled
+		      bus.ioport_write (0x1ff, 0x00);
 		    }
 		  else if (cart_exist[4]) // Cartridge in F0000-F7FFF
 		    {
-		      jio.out (0x1ff, 0xbf); // F8000-FFFFF
-		      jio.out (0x1ff, 0x20); //
+		      bus.ioport_write (0x1ff, 0xbf); // F8000-FFFFF
+		      bus.ioport_write (0x1ff, 0x20); //
 		    }
 		  else
 		    {
-		      jio.out (0x1ff, 0xbe); // F0000-FFFFF
-		      jio.out (0x1ff, 0x21); //
+		      bus.ioport_write (0x1ff, 0xbe); // F0000-FFFFF
+		      bus.ioport_write (0x1ff, 0x21); //
 		    }
 		  for (i = 0; i < 6; i++)
 		    {
-		      jio.out (0x1ff, i + 1); // Cartridge ROM
+		      bus.ioport_write (0x1ff, i + 1); // Cartridge ROM
 		      if (cart_exist[i])
 			{
-			  jio.out (0x1ff, 0xba + i); // Enabled
-			  jio.out (0x1ff, 0x20);
+			  bus.ioport_write (0x1ff, 0xba + i); // Enabled
+			  bus.ioport_write (0x1ff, 0x20);
 			}
 		      else
 			{
-			  jio.out (0x1ff, 0x00); // Disabled
-			  jio.out (0x1ff, 0x00);
+			  bus.ioport_write (0x1ff, 0x00); // Disabled
+			  bus.ioport_write (0x1ff, 0x00);
 			}
 		    }
 		  videoclass.in3da (true);
