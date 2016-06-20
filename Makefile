@@ -5,10 +5,10 @@ CXXFLAGS=-g -Wall -O2 $(ARCH) `pkg-config sdl2 --cflags`
 all : 5511emu
 
 clean :
-	rm jmain.o jmem.o sdlsound.o jvideo.o jioclass.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o jjoy.o jbus.o
+	rm jmain.o jmem.o sdlsound.o jvideo.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o jjoy.o jbus.o jio1ff.o
 
-5511emu : jmain.o jmem.o sdlsound.o jvideo.o jioclass.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o jjoy.o jbus.o
-	$(CXX) -g -o 5511emu jmain.o jmem.o sdlsound.o jvideo.o jkey.o jioclass.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o jjoy.o jbus.o `pkg-config sdl2 --libs`
+5511emu : jmain.o jmem.o sdlsound.o jvideo.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o jjoy.o jbus.o jio1ff.o
+	$(CXX) -g -o 5511emu jmain.o jmem.o sdlsound.o jvideo.o jkey.o jfdc.o stdfdc.o 8088.o 8259a.o jevent.o jjoy.o jbus.o jio1ff.o `pkg-config sdl2 --libs`
 
 8088.o : 8088.c
 	$(CC) -g -O3 $(ARCH) -Wall -o 8088.o -c 8088.c
@@ -16,7 +16,7 @@ clean :
 8259a.o : 8259a.c
 	$(CC) -g -O3 $(ARCH) -Wall -o 8259a.o -c 8259a.c
 
-jmain.o : jmain.cc jmem.hh sdlsound.hh jvideo.hh jtype.hh jkey.hh jfdc.hh stdfdc.hh jevent.hh jjoy.hh jioclass.hh jbus.hh
+jmain.o : jmain.cc jmem.hh sdlsound.hh jvideo.hh jtype.hh jkey.hh jfdc.hh stdfdc.hh jevent.hh jjoy.hh jbus.hh jio1ff.hh
 	$(CXX) -g $(CXXFLAGS) -O2 $(ARCH) -Wall -c jmain.cc
 
 jmem.o : jmem.cc jmem.hh
@@ -25,8 +25,6 @@ jmem.o : jmem.cc jmem.hh
 sdlsound.o : sdlsound.cc sdlsound.hh
 
 jvideo.o : jvideo.cc jvideo.hh jtype.hh jmem.hh
-
-jioclass.o : jioclass.cc jvideo.hh jmem.hh jtype.hh jkey.hh sdlsound.hh jfdc.hh jjoy.hh jioclass.hh
 
 jkey.o : jkey.cc jkey.hh jtype.hh
 
@@ -39,3 +37,5 @@ jevent.o : jevent.cc jtype.hh jkey.hh jevent.hh
 jjoy.o : jjoy.cc jjoy.hh
 
 jbus.o : jbus.cc jbus.hh
+
+jio1ff.o : jio1ff.cc jbus.hh jio1ff.hh

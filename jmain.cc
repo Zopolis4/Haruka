@@ -17,6 +17,7 @@
 */
 
 #include <iostream>
+#include <iomanip>
 #include "SDL.h"
 #include "jtype.hh"
 #include "jmem.hh"
@@ -27,8 +28,8 @@
 #include "jevent.hh"
 #include "sdlsound.hh"
 #include "jjoy.hh"
-#include "jioclass.hh"
 #include "jbus.hh"
+#include "jio1ff.hh"
 
 using std::cerr;
 using std::endl;
@@ -46,6 +47,8 @@ extern "C"
   typedef unsigned int t20;
   extern void nmi8088 (int);
   //extern void printip8088 (void);
+  extern t16 read8259 (t16);
+  extern t16 write8259 (t16, t16);
 
   t16
   memory_read (t20 addr, int *slow)
@@ -94,51 +97,398 @@ struct maindata
   SDL_Surface *surface;
 };
 
-class jioclass_io : public jbus::io
+class devrom : public jio1ffdev
 {
-  jioclass &obj;
+  jmem &mem;
+  const unsigned int offset;
+  const unsigned int mask;
 public:
-  jioclass_io (jbus &bus, jioclass &ioobj);
-  void memory_read (unsigned int addr, unsigned int &val, int &cycles);
-  void memory_write (unsigned int addr, unsigned int val, int &cycles);
-  void ioport_read (unsigned int addr, unsigned int &val, int &cycles);
-  void ioport_write (unsigned int addr, unsigned int val, int &cycles);
+  devrom (jbus &bus, conf c, jmem &mem, unsigned int offset, unsigned int mask)
+    : jio1ffdev (bus, c), mem (mem), offset (offset), mask (mask) { };
+  void memory_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 4;
+    val = mem.read (offset + (addr & mask));
+  };
 };
 
-jioclass_io::jioclass_io (jbus &bus, jioclass &ioobj)
-  : io (bus), obj (ioobj)
+class devkjcs : public jio1ffdev
 {
-}
+  jmem &mem;
+public:
+  devkjcs (jbus &bus, conf c, jmem &mem) : jio1ffdev (bus, c), mem (mem) { };
+  void memory_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 4;
+    unsigned int x = (addr & 0x3ffff) + 0x80000;
+    if (x >= 0x88000 && x <= 0x8ffff)
+      val = mem.read (0x8000 | (addr & 0x7ff));
+    else
+      val = mem.read (addr & 0x3ffff);
+  };
+  void memory_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 4;
+    unsigned int x = (addr & 0x3ffff) + 0x80000;
+    if (x >= 0x88000 && x <= 0x8ffff)
+      mem.write (0x8000 | (addr & 0x7ff), val);
+  };
+};
 
-void
-jioclass_io::memory_read (unsigned int addr, unsigned int &val, int &cycles)
+class devmain : public jio1ffdev
 {
-  val = obj.memr (addr);
-  cycles = 4;
-  /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) cycles = 6;
-}
+  jmem &program;
+public:
+  devmain (jbus &bus, conf c, jmem &program)
+    : jio1ffdev (bus, c), program (program)
+  { };
+  // Programmable RAM shared with VRAM takes average 2 wait cycles
+  void memory_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = program.read (addr & 0x1ffff);
+  };
+  void memory_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    program.write (addr & 0x1ffff, val);
+  };
+};
 
-void
-jioclass_io::memory_write (unsigned int addr, unsigned int val, int &cycles)
+class devvram12 : public jio1ffdev
 {
-  obj.memw (addr, val);
-  cycles = 4;
-  /* FIXME */ if (addr >= 0xa0000 && addr <= 0xbffff) cycles = 6;
-}
+  jvideo &video;
+  bool vp2;
+public:
+  devvram12 (jbus &bus, conf c, jvideo &video, bool vp2)
+    : jio1ffdev (bus, c), video (video), vp2 (vp2) { };
+  void memory_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = video.read (vp2, addr & 0x7fff);
+  };
+  void memory_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    video.write (vp2, addr & 0x7fff, val);
+  };
+};
 
-void
-jioclass_io::ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+class dev8259 : public jio1ffdev
 {
-  val = obj.in (addr);
-  cycles = 6;
-}
+public:
+  dev8259 (jbus &bus, conf c) : jio1ffdev (bus, c) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = read8259 (addr);
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    write8259 (addr, val);
+  };
+};
 
-void
-jioclass_io::ioport_write (unsigned int addr, unsigned int val, int &cycles)
+class dev8253 : public jio1ffdev
 {
-  obj.out (addr, val);
-  cycles = 6;
-}
+  sdlsound &sound;
+public:
+  dev8253 (jbus &bus, conf c, sdlsound &sound)
+    : jio1ffdev (bus, c), sound (sound) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = sound.in8253 (addr & 3);
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    sound.out8253 (addr & 3, val);
+  };
+};
+
+class dev8255 : public jio1ffdev
+{
+  unsigned int dat8255[3];
+  jkey &kbd;
+  sdlsound &sound;
+public:
+  dev8255 (jbus &bus, conf c, jkey &kbd, sdlsound &sound)
+    : jio1ffdev (bus, c), kbd (kbd), sound (sound)
+  {
+    dat8255[0] = dat8255[1] = dat8255[2] = 0;
+  };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    addr &= 7;
+    if (addr <= 1)
+      val = dat8255[addr];
+    else
+      val = 2 | (kbd.getnmiflag () ? 1 : 0) | (kbd.getkeydata () ? 64 : 0) |
+	(sound.gettimer2out () ? 0x20 : 0);
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    addr &= 7;
+    if (addr <= 2)
+      dat8255[addr] = val;
+    if (addr == 1)
+      sound.set8255b (val);
+  };
+};
+
+class devnmi : public jio1ffdev
+{
+  jkey &kbd;
+  sdlsound &sound;
+public:
+  devnmi (jbus &bus, conf c, jkey &kbd, sdlsound &sound)
+    : jio1ffdev (bus, c), kbd (kbd), sound (sound) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = kbd.in ();
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    kbd.out (val);
+    sound.selecttimer1in (((val & 0x20) != 0) ? true : false);
+  };
+};
+
+class devsond : public jio1ffdev
+{
+  sdlsound &sound;
+public:
+  devsond (jbus &bus, conf c, sdlsound &sound)
+    : jio1ffdev (bus, c), sound (sound) { };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    // SN76489A needs 32 cycles
+    cycles = 32;		// FIXME: Is this correct?
+    sound.iowrite (val);
+  };
+};
+
+class devfdc : public jio1ffdev
+{
+  jfdc &fdc;
+public:
+  devfdc (jbus &bus, conf c, jfdc &fdc) : jio1ffdev (bus, c), fdc (fdc) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    switch (addr & 0xf)
+      {
+      case 4:
+	val = fdc.inf4 ();
+	break;
+      case 5:
+	val = fdc.inf5 ();
+	break;
+      }
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    switch (addr & 0xf)
+      {
+      case 2:
+	fdc.outf2 (val);
+	break;
+      case 5:
+	fdc.outf5 (val);
+	break;
+      }
+  };
+};
+
+class devjoyw : public jio1ffdev
+{
+  jjoy &joy;
+public:
+  devjoyw (jbus &bus, conf c, jjoy &joy) : jio1ffdev (bus, c), joy (joy) { };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    joy.out201 (val);
+  };
+};
+
+class devjoyr : public jio1ffdev
+{
+  jjoy &joy;
+public:
+  devjoyr (jbus &bus, conf c, jjoy &joy) : jio1ffdev (bus, c), joy (joy) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = joy.in201 ();
+  };
+};
+
+class devcrtc : public jio1ffdev
+{
+  jvideo &video;
+public:
+  devcrtc (jbus &bus, conf c, jvideo &video)
+    : jio1ffdev (bus, c), video (video) { };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    if (!(addr & 1))
+      video.out3d4 (val);
+    else
+      video.out3d5 (val);
+  };
+};
+
+class devga2ab : public jio1ffdev
+{
+  jvideo &video;
+  bool vp2;
+public:
+  devga2ab (jbus &bus, conf c, jvideo &video, bool vp2)
+    : jio1ffdev (bus, c), video (video), vp2 (vp2) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    if (addr == 0x3da)
+      val = video.in3da (vp2);
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    if (addr == 0x3da)
+      video.out3da (vp2, val);
+  };
+};
+
+class devpg2 : public jio1ffdev
+{
+  jvideo &video;
+public:
+  devpg2 (jbus &bus, conf c, jvideo &video)
+    : jio1ffdev (bus, c), video (video) { };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    if (addr == 0x3d9)
+      video.out3d9 (val);
+  };
+};
+
+class devpg1 : public jio1ffdev
+{
+  jvideo &video;
+public:
+  devpg1 (jbus &bus, conf c, jvideo &video)
+    : jio1ffdev (bus, c), video (video) { };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    if (addr == 0x3df)
+      video.out3df (val);
+  };
+};
+
+class devmfg : public jbus::io
+{
+public:
+  devmfg (jbus &bus) : io (bus) { };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    switch (addr == 0x10 ? val & 0xff : addr == 0x11 ? 0x100 :
+	    addr == 0x12 ? 0x101 : 0x102)
+      {
+      case 0x102:
+	return;
+#define z(a,b) case 0x##a: std::cerr << "MFG: " b << std::endl; break
+	z (ff, "8088 processor test");
+	z (fe, "8255 initialization and test");
+	z (fd, "set up 46505 and video gate array to get memory working");
+	z (fc, "planar board ros checksum test");
+	z (fb, "ram mapping");
+	z (fa, "base 8k read/write storage test");
+	z (f9, "(vram test)");
+	z (f8, "rom cartridge configuration check");
+	z (f7, "interrupts");
+	z (f6, "initialize and test the 8259 interrupt controller chip");
+	z (f5, "8253 timer checkout");
+	z (f4, "crt attachment test");
+	z (f3, "set up keyboard parameters");
+	z (f2, "32k vram (vram2) test");
+	z (f1, "kj-rom and gaiji sram test");
+	z (f0, "memory size determine and test");
+	z (ef, "keyboard test");
+	z (ee, "cassette interface test");
+	z (ed, "serial port (2fx) test");
+	z (ec, "parallel port test");
+	z (eb, "optional rom test");
+	z (ea, "diskette attachment test");
+	z (e9, "PCjr cartridge rom checksum test");
+#undef z
+      default:
+	std::cerr << "MFG: port 0x" << std::setw (2) << std::setfill ('0')
+		  << std::hex << addr << " code 0x" << std::setw (2)
+		  << std::setfill ('0') << std::hex << val << std::endl;
+	break;
+      }
+    cycles = 6;
+  };
+};
+
+class devexmem : public jbus::io
+{
+  jmem &mainram;
+  jvideo &video;
+public:
+  devexmem (jbus &bus, jmem &mainram, jvideo &video)
+    : io (bus), mainram (mainram), video (video)
+  { };
+  void memory_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    if (video.pcjrmem ())
+      {
+	if (addr >= 0x20000 && addr < 0x80000)
+	  {
+	    cycles = 4;
+	    val = mainram.read (addr - 0x20000);
+	  }
+      }
+    else
+      {
+	if (addr < 0x60000)
+	  {
+	    cycles = 4;
+	    val = mainram.read (addr);
+	  }
+      }
+  };
+  void memory_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    if (video.pcjrmem ())
+      {
+	if (addr >= 0x20000 && addr < 0x80000)
+	  {
+	    cycles = 4;
+	    mainram.write (addr - 0x20000, val);
+	  }
+      }
+    else
+      {
+	if (addr < 0x60000)
+	  {
+	    cycles = 4;
+	    mainram.write (addr, val);
+	  }
+      }
+  };
+};
 
 int
 sdlmainthread (void *p)
@@ -185,9 +535,65 @@ sdlmainthread (void *p)
       jvideo videoclass (md->window, md->surface, program, kanjirom);
       jjoy joy;
       stdfdc fdc (videoclass);
-      jioclass jio (videoclass, soundclass, systemrom, program, mainram,
-		    kanjirom, *md->keybd, cartrom, fdc, joy);
-      jioclass_io jio_io (bus, jio);
+      devrom d_irom7 (bus, jio1ffdev::conf (0x00, 0203, 0003, 0074, 0040),
+		      systemrom, 0, 0x1ffff);
+      devrom d_erom2 (bus, jio1ffdev::conf (0x01, 0357, 0157, 0020, 0000),
+		      cartrom, 32768 * 0, 0x7fff); // Writable?
+      devrom d_erom3 (bus, jio1ffdev::conf (0x02, 0357, 0157, 0020, 0000),
+		      cartrom, 32768 * 1, 0x7fff); // Writable?
+      devrom d_erom4 (bus, jio1ffdev::conf (0x03, 0217, 0017, 0060, 0040),
+		      cartrom, 32768 * 2, 0x7fff);
+      devrom d_erom5 (bus, jio1ffdev::conf (0x04, 0217, 0017, 0060, 0040),
+		      cartrom, 32768 * 3, 0x7fff);
+      devrom d_erom6 (bus, jio1ffdev::conf (0x05, 0217, 0017, 0060, 0040),
+		      cartrom, 32768 * 4, 0x7fff);
+      devrom d_erom7 (bus, jio1ffdev::conf (0x06, 0217, 0017, 0060, 0040),
+		      cartrom, 32768 * 5, 0x7fff);
+      devkjcs d_kjcs (bus, jio1ffdev::conf (0x07, 0277, 0177, 0000, 0000),
+		      kanjirom);
+      devmain d_main (bus, jio1ffdev::conf (0x08, 0237, 0037, 0040, 0140),
+		      program);
+      devvram12 d_vram1 (bus, jio1ffdev::conf (0x09, 0237, 0137, 0140, 0040),
+			 videoclass, false);
+      devvram12 d_vram2 (bus, jio1ffdev::conf (0x0A, 0237, 0037, 0040, 0140),
+			 videoclass, true);
+      dev8259 d_8259 (bus, jio1ffdev::conf (0x80, 0200, 0000, 0004, 0000));
+      dev8253 d_8253 (bus, jio1ffdev::conf (0x81, 0200, 0000, 0010, 0000),
+		      soundclass);
+      dev8255 d_8255 (bus, jio1ffdev::conf (0x82, 0200, 0000, 0014, 0000),
+		      *md->keybd, soundclass);
+      devnmi d_nmi (bus, jio1ffdev::conf (0x83, 0200, 0000, 0024, 0000),
+		    *md->keybd, soundclass);
+      devsond d_sond (bus, jio1ffdev::conf (0x84, 0200, 0000, 0030, 0000),
+		      soundclass);
+      devfdc d_fdc (bus, jio1ffdev::conf (0x85, 0377, 0177, 0000, 0000), fdc);
+      devjoyw d_joyw (bus, jio1ffdev::conf (0x86, 0200, 0000, 0100, 0000),
+		      joy);
+      devjoyr d_joyr (bus, jio1ffdev::conf (0x87, 0200, 0000, 0100, 0000),
+		      joy);
+      jio1ffdev d_prnt (bus, jio1ffdev::conf (0x88, 0200, 0000, 0157, 0000));
+      jio1ffdev d_8250 (bus, jio1ffdev::conf (0x89, 0200, 0000, 0137, 0000));
+      devcrtc d_crtc (bus, jio1ffdev::conf (0x8A, 0200, 0000, 0172, 0000),
+		      videoclass);
+      jio1ffdev d_ga01 (bus, jio1ffdev::conf (0x8B, 0200, 0000, 0173,
+					      0000)); // (reserved) 0
+      devga2ab d_ga2a (bus, jio1ffdev::conf (0x8C, 0200, 0000, 0173, 0000),
+		       videoclass, false); // 2
+      devga2ab d_ga2b (bus, jio1ffdev::conf (0x8D, 0200, 0000, 0173, 0000),
+		       videoclass, true); // 2
+      jio1ffdev d_ga03 (bus, jio1ffdev::conf (0x8E, 0200, 0000, 0173,
+					      0000)); // 5
+      jio1ffdev d_lpgt (bus, jio1ffdev::conf (0x8F, 0200, 0000, 0173,
+					      0000)); // 2 or 6
+      devpg2 d_pg2 (bus, jio1ffdev::conf (0x90, 0200, 0000, 0173, 0000),
+		    videoclass); // 1
+      devpg1 d_pg1 (bus, jio1ffdev::conf (0x91, 0200, 0000, 0173, 0000),
+		    videoclass); // 7
+      jio1ffdev d_modm (bus, jio1ffdev::conf (0x92, 0200, 0000, 0177, 0000));
+      jio1ffdev d_etsc (bus, jio1ffdev::conf (0x93, 0200, 0000, 0000, 0177));
+      devmfg d_mfg (bus);
+      jio1ffstatus d_1ff (bus);
+      devexmem d_exmem (bus, mainram, videoclass);
       int clk, clk2;
       bool redraw = false;
 
@@ -228,8 +634,8 @@ sdlmainthread (void *p)
 		  mainram.write (0x472, 0x34);
 		}
 	      cartrom.clearrom ();
-	      jio.set_base1_rom (false);
-	      jio.set_base2_rom (false);
+	      d_1ff.set_base1_rom (false);
+	      d_1ff.set_base2_rom (false);
 	      for (i = 0 ; i < 6 ; i++)
 		{
 		  if (md->cart[i])
@@ -250,15 +656,15 @@ sdlmainthread (void *p)
 		    }
 		}
 	      if (cart_exist[4])
-		jio.set_base2_rom (true);
+		d_1ff.set_base2_rom (true);
 	      if (cart_exist[5])
-		jio.set_base1_rom (true);
+		d_1ff.set_base1_rom (true);
 	      if (md->pcjrflag)
 		{
 		  cartrom.loadrom (65536 * 1, "PCJR_E.ROM", 65536);
 		  cartrom.loadrom (65536 * 2, "PCJR_F.ROM", 65536);
-		  jio.set_base1_rom (true);
-		  jio.set_base2_rom (true);
+		  d_1ff.set_base1_rom (true);
+		  d_1ff.set_base2_rom (true);
 		}
 	      if (md->origpcjrflag)
 		{
