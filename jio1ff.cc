@@ -50,8 +50,16 @@ jio1ffdev::conf::conf (unsigned int index, unsigned int andreg1,
 }
 
 bool
+jio1ffdev::conf::is_io_block ()
+{
+  return index >= 0x80;
+}
+
+bool
 jio1ffdev::conf::is_my_mem_addr (unsigned int addr, unsigned int bit)
 {
+  if (is_io_block ())		// I am not a memory block
+    return false;
   addr = (addr >> 15) & 037;
   if (reg1 & 0x80)		// Enabled
     {
@@ -80,6 +88,8 @@ jio1ffdev::conf::is_my_memwrite_addr (unsigned int addr)
 bool
 jio1ffdev::conf::is_my_io_addr (unsigned int addr)
 {
+  if (!is_io_block ())		// I am not an I/O block
+    return false;
   addr = (addr >> 3) & 0177;
   if (reg1 & 0x80)		// Enabled
     {
