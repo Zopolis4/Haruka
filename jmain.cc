@@ -399,7 +399,11 @@ public:
 class devmfg : public jbus::io
 {
 public:
-  devmfg (jbus &bus) : io (bus) { };
+  devmfg (jbus &bus) : io (bus)
+  {
+    set_memory_iobmp (0);
+    set_ioport_iobmp (0x0002);
+  };
   void ioport_write (unsigned int addr, unsigned int val, int &cycles)
   {
     switch (addr == 0x10 ? val & 0xff : addr == 0x11 ? 0x100 :
@@ -449,7 +453,10 @@ class devexmem : public jbus::io
 public:
   devexmem (jbus &bus, jmem &mainram, jvideo &video)
     : io (bus), mainram (mainram), video (video)
-  { };
+  {
+    set_memory_iobmp (0x7fff);
+    set_ioport_iobmp (0);
+  };
   void memory_read (unsigned int addr, unsigned int &val, int &cycles)
   {
     if (video.pcjrmem ())

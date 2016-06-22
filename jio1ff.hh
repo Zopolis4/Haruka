@@ -44,13 +44,14 @@ public:
   public:
     conf (unsigned int index, unsigned int andreg1, unsigned int andreg2,
 	  unsigned int orreg1, unsigned int orreg2);
+    unsigned int get_iobmp ();
     bool is_io_block ();
     bool is_my_mem_addr (unsigned int addr, unsigned int bit);
     bool is_my_memread_addr (unsigned int addr);
     bool is_my_memwrite_addr (unsigned int addr);
     bool is_my_io_addr (unsigned int addr);
     void read1ff ();
-    void write1ff (unsigned int val);
+    bool write1ff (unsigned int val);
   };
   jio1ffdev (jbus &bus, conf c);
   virtual void memory_read (unsigned int addr, unsigned int &val, int &cycles);
