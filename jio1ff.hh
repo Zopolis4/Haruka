@@ -41,9 +41,14 @@ public:
     unsigned int reg2;
     unsigned int curr_index;
     unsigned int curr_state;
+    unsigned int cmpand;
+    unsigned int cmp;
   public:
     conf (unsigned int index, unsigned int andreg1, unsigned int andreg2,
 	  unsigned int orreg1, unsigned int orreg2);
+    conf (unsigned int index, unsigned int andreg1, unsigned int andreg2,
+	  unsigned int orreg1, unsigned int orreg2, unsigned int cmpand,
+	  unsigned int cmp);
     unsigned int get_iobmp ();
     bool is_io_block ();
     bool is_my_mem_addr (unsigned int addr, unsigned int bit);

@@ -357,14 +357,12 @@ public:
   void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
   {
     cycles = 6;
-    if (addr == 0x3da)
-      val = video.in3da (vp2);
+    val = video.in3da (vp2);
   };
   void ioport_write (unsigned int addr, unsigned int val, int &cycles)
   {
     cycles = 6;
-    if (addr == 0x3da)
-      video.out3da (vp2, val);
+    video.out3da (vp2, val);
   };
 };
 
@@ -377,8 +375,7 @@ public:
   void ioport_write (unsigned int addr, unsigned int val, int &cycles)
   {
     cycles = 6;
-    if (addr == 0x3d9)
-      video.out3d9 (val);
+    video.out3d9 (val);
   };
 };
 
@@ -391,8 +388,7 @@ public:
   void ioport_write (unsigned int addr, unsigned int val, int &cycles)
   {
     cycles = 6;
-    if (addr == 0x3df)
-      video.out3df (val);
+    video.out3df (val);
   };
 };
 
@@ -583,19 +579,19 @@ sdlmainthread (void *p)
       devcrtc d_crtc (bus, jio1ffdev::conf (0x8A, 0200, 0000, 0172, 0000),
 		      videoclass);
       jio1ffdev d_ga01 (bus, jio1ffdev::conf (0x8B, 0200, 0000, 0173,
-					      0000)); // (reserved) 0
-      devga2ab d_ga2a (bus, jio1ffdev::conf (0x8C, 0200, 0000, 0173, 0000),
-		       videoclass, false); // 2
-      devga2ab d_ga2b (bus, jio1ffdev::conf (0x8D, 0200, 0000, 0173, 0000),
-		       videoclass, true); // 2
+					      0000, 07, 00)); // (reserved)
+      devga2ab d_ga2a (bus, jio1ffdev::conf (0x8C, 0200, 0000, 0173, 0000,
+					     07, 02), videoclass, false);
+      devga2ab d_ga2b (bus, jio1ffdev::conf (0x8D, 0200, 0000, 0173, 0000,
+					     07, 02), videoclass, true);
       jio1ffdev d_ga03 (bus, jio1ffdev::conf (0x8E, 0200, 0000, 0173,
-					      0000)); // 5
+					      0000, 07, 05));
       jio1ffdev d_lpgt (bus, jio1ffdev::conf (0x8F, 0200, 0000, 0173,
-					      0000)); // 2 or 6
-      devpg2 d_pg2 (bus, jio1ffdev::conf (0x90, 0200, 0000, 0173, 0000),
-		    videoclass); // 1
-      devpg1 d_pg1 (bus, jio1ffdev::conf (0x91, 0200, 0000, 0173, 0000),
-		    videoclass); // 7
+					      0000, 03, 02));
+      devpg2 d_pg2 (bus, jio1ffdev::conf (0x90, 0200, 0000, 0173, 0000,
+					  07, 01), videoclass);
+      devpg1 d_pg1 (bus, jio1ffdev::conf (0x91, 0200, 0000, 0173, 0000,
+					  07, 07), videoclass);
       jio1ffdev d_modm (bus, jio1ffdev::conf (0x92, 0200, 0000, 0177, 0000));
       jio1ffdev d_etsc (bus, jio1ffdev::conf (0x93, 0200, 0000, 0000, 0177));
       devmfg d_mfg (bus);

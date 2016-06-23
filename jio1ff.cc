@@ -47,7 +47,18 @@ jio1ffdev::conf::conf (unsigned int index, unsigned int andreg1,
 		       unsigned int andreg2, unsigned int orreg1,
 		       unsigned int orreg2)
   : index (index), andreg1 (andreg1), andreg2 (andreg2), orreg1 (orreg1),
-    orreg2 (orreg2), reg1 (0), reg2 (0), curr_index (0), curr_state (0)
+    orreg2 (orreg2), reg1 (0), reg2 (0), curr_index (0), curr_state (0),
+    cmpand (0), cmp (0)
+{
+}
+
+jio1ffdev::conf::conf (unsigned int index, unsigned int andreg1,
+		       unsigned int andreg2, unsigned int orreg1,
+		       unsigned int orreg2, unsigned int cmpand,
+		       unsigned int cmp)
+  : index (index), andreg1 (andreg1), andreg2 (andreg2), orreg1 (orreg1),
+    orreg2 (orreg2), reg1 (0), reg2 (0), curr_index (0), curr_state (0),
+    cmpand (cmpand), cmp (cmp)
 {
 }
 
@@ -112,11 +123,12 @@ jio1ffdev::conf::is_my_io_addr (unsigned int addr)
 {
   if (!is_io_block ())		// I am not an I/O block
     return false;
-  addr = (addr >> 3) & 0177;
+  unsigned int addr_shift = (addr >> 3) & 0177;
   if (reg1 & 0x80)		// Enabled
     {
       unsigned int mask = (reg2 & 0177) ^ 0177;
-      if ((mask & reg1) == (mask & addr))
+      if ((mask & reg1) == (mask & addr_shift))
+	if ((addr & cmpand) == cmp)
 	  return true;
     }
   return false;
