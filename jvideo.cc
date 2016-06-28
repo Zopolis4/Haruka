@@ -815,6 +815,28 @@ jvideo::draw ()
 //  2: pull up
 // 17: connected to nothing
 
+enum
+  {			      // Registers
+    HTOTAL,		      // 00: Horizontal Total
+    HDISP,		      // 01: Horizontal Displayed
+    HSYNCPOS,		      // 02: Horizontal Sync Position
+    HSYNCWIDTH,		      // 03: Horizontal Sync Width
+    VTOTAL,		      // 04: Vertical Total
+    VTOTALADJ,		      // 05: Vertical Total Adjust
+    VDISP,		      // 06: Vertical Displayed
+    VSYNCPOS,		      // 07: Vertical SyncPosition
+    INTERMODE,		      // 08: Interlace Mode
+    MAXSCANLINE,	      // 09: Maximum Scan Line
+    CURSTART,		      // 0A: Cursor Start
+    CUREND,		      // 0B: Cursor End
+    SADDRHIGH,		      // 0C: Start Address High
+    SADDRLOW,		      // 0D: Start Address Low
+    CURLOCHIGH,		      // 0E: Cursor Location High
+    CURLOCLOW,		      // 0F: Cursor Location Low
+    LPENHIGH,		      // 10: Light Pen High
+    LPENLOW,		      // 11: Light Pen Low
+  };
+
 jvideo::j46505::j46505 ()
 {
   int i;
@@ -850,12 +872,12 @@ jvideo::j46505::get_reg (unsigned int idx)
 {
   switch (idx)
     {
-    case 12:
-    case 13:
-    case 14:
-    case 15:
-    case 16:
-    case 17:
+    case SADDRHIGH:
+    case SADDRLOW:
+    case CURLOCHIGH:
+    case CURLOCLOW:
+    case LPENHIGH:
+    case LPENLOW:
       return reg[idx];
     }
   return 0xff;
@@ -866,32 +888,32 @@ jvideo::j46505::set_reg (unsigned int idx, unsigned int val)
 {
   switch (idx)
     {
-    case 0:
-    case 1:
-    case 2:
-    case 13:
-    case 15:
+    case HTOTAL:
+    case HDISP:
+    case HSYNCPOS:
+    case SADDRLOW:
+    case CURLOCLOW:
       reg[idx] = val & 0xff;
       break;
-    case 4:
-    case 6:
-    case 7:
-    case 10:
+    case VTOTAL:
+    case VDISP:
+    case VSYNCPOS:
+    case CURSTART:
       reg[idx] = val & 0x7f;
       break;
-    case 12:
-    case 14:
+    case SADDRHIGH:
+    case CURLOCHIGH:
       reg[idx] = val & 0x3f;
       break;
-    case 5:
-    case 9:
-    case 11:
+    case VTOTALADJ:
+    case MAXSCANLINE:
+    case CUREND:
       reg[idx] = val & 0x1f;
       break;
-    case 3:
+    case HSYNCWIDTH:
       reg[idx] = val & 0xf;
       break;
-    case 8:
+    case INTERMODE:
       reg[idx] = val & 0x3;
       break;
     }
@@ -900,7 +922,7 @@ jvideo::j46505::set_reg (unsigned int idx, unsigned int val)
 unsigned int
 jvideo::j46505::get_ma ()
 {
-  return iy * reg[1] + ix + (reg[13] | reg[12] << 8);
+  return iy * reg[HDISP] + ix + (reg[SADDRLOW] | reg[SADDRHIGH] << 8);
 }
 
 bool
@@ -908,9 +930,9 @@ jvideo::j46505::get_cursor ()
 {
   if (!get_disp ())
     return false;
-  if (get_ma () != (reg[15] | reg[14] << 8))
+  if (get_ma () != (reg[CURLOCLOW] | reg[CURLOCHIGH] << 8))
     return false;
-  if (ira >= reg[10] && ira <= reg[11])
+  if (ira >= reg[CURSTART] && ira <= reg[CUREND])
     return true;
   else
     return false;
@@ -919,7 +941,7 @@ jvideo::j46505::get_cursor ()
 bool
 jvideo::j46505::get_disp ()
 {
-  if (ix < reg[1] && iy < reg[6])
+  if (ix < reg[HDISP] && iy < reg[VDISP])
     return true;
   else
     return false;
@@ -928,7 +950,7 @@ jvideo::j46505::get_disp ()
 bool
 jvideo::j46505::get_hsync ()
 {
-  if (ix >= reg[2] && ix - reg[2] < reg[3])
+  if (ix >= reg[HSYNCPOS] && ix - reg[HSYNCPOS] < reg[HSYNCWIDTH])
     return true;
   else
     return false;
@@ -937,7 +959,7 @@ jvideo::j46505::get_hsync ()
 bool
 jvideo::j46505::get_vsync ()
 {
-  if (iy >= reg[7] && iy - reg[7] < 1)
+  if (iy >= reg[VSYNCPOS] && iy - reg[VSYNCPOS] < 1)
     return true;
   else
     return false;
@@ -947,16 +969,16 @@ void
 jvideo::j46505::tick ()
 {
   ix++;
-  if (ix > reg[0])
+  if (ix > reg[HTOTAL])
     {
       ix = 0;
       ira++;
-      if (ira > reg[9])
+      if (ira > reg[MAXSCANLINE])
 	{
 	  ira = 0;
 	  iy++;
 	}
-      if (iy > reg[4] && ira >= reg[5])
+      if (iy > reg[VTOTAL] && ira >= reg[VTOTALADJ])
 	{
 	  ira = 0;
 	  iy = 0;
