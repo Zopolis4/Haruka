@@ -43,7 +43,7 @@ private:
     unsigned int inb (unsigned int addr);
     void outb (unsigned int addr, unsigned int val);
   };
-private:
+  j46505 crtc, crtc2;
   int flag3da[2];
   jmem &program;		// Programmable RAM
   jmem vram;			// 32KB VRAM + 32KB VRAM
@@ -58,31 +58,9 @@ private:
   int convsub (unsigned char *p, int vp);
   int index3d4;
   int hsynccount;
-  int vtop (int vp2)
-  {
-    int a;
-
-    a = (crtcdata[12] * 256 + crtcdata[13]) * 2;
-    if (vp2)
-      return a + (pagereg[1] & 3) * 16384;
-    return a + (pagereg[0] & 7) * 16384;
-  }
-  jmem &vmem (int vp2)
-  {
-    if (vp2)
-      return vram;
-    return program;
-  }
-  int vmask (int vp2)
-  {
-    if (vp2)
-      return 65535;
-    return 131071;
-  }
 protected:
   int mode1[2], palettemask[2], mode2[2];
   unsigned char *drawdata;
-  int crtcdata[32];
   int bordercolor;
   int reset, transpalette, superimpose;
   unsigned char palette[16];
@@ -105,10 +83,9 @@ public:
   void out3da (bool vp2, unsigned char data);
   void out3df (unsigned char data) { pagereg[0] = data; }
   void out3d9 (unsigned char data) { pagereg[1] = data; }
-  void out3d4 (unsigned char data) { index3d4 = data; }
-  unsigned char in3d5 () { return crtcdata[index3d4 % 32]; }
-  void out3d5 (unsigned char data) { crtcdata[index3d4 % 32] = data;
-  /* for (int i=0;i<12;i++)printf("%02x ",crtcdata[i]);printf("\n"); */ }
+  void out3d4 (unsigned char data);
+  unsigned char in3d5 ();
+  void out3d5 (unsigned char data);
   void clk (int clockcount, bool stopflag);
   //virtual void draw () = 0;
   bool pcjrmem () { return (mode2[1] & 16) ? true : false; }

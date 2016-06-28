@@ -141,448 +141,222 @@ jvideo::out3da (bool vp2, unsigned char data)
     }
 }
 
-int
-jvideo::convsub (unsigned char *p, int vp)
+static void
+draw1 (unsigned char **p, unsigned char d)
 {
-  int maskdat;
-  int readtop;
-  unsigned char ctmp;
+  *(*p)++ = d;
+}
 
-  jmem &readmem = vmem (vp);
-  maskdat = vmask (vp);
-  readtop = vtop (vp);
-  if (!(mode1[vp] & 8))
-    return 2;
-  if (!(mode1[vp] & 2))		// Text mode
+static void
+draw2 (unsigned char **p, unsigned char d)
+{
+  draw1 (p, d);
+  draw1 (p, d);
+}
+
+static unsigned char *
+draw_ma (unsigned char *p, int vp, unsigned int ma, unsigned int ra,
+	 unsigned int gma, unsigned int gra, bool cursor, jmem &readmem,
+	 jmem &kanjirom, unsigned int readtop, unsigned int mode1,
+	 unsigned int mode2, unsigned int blinkcount)
+{
+  if (!(mode1 & 2))		// Text mode
     {
-      bool x80, y25;
-
-      x80 = y25 = false;
-      if (!vp || !(mode1[1] & 64))
-	y25 = true;
-      if (mode1[vp] & 1)
-	x80 = true;
-      if (y25 == false)
+      if (vp && (mode1 & 0x40))	// Kanji mode
 	{
-	  int i, j, k, l, bg, fg, d1, d2, addr, m, n, drawaddr, d, e, d3;
-
-	  k = readtop;
-	  l = x80 ? 80 : 40;
-	  for (i = 0 ; i < 11 ; i++)
+	  unsigned int voff = readtop | ((ma << 1) & 0x3fff);
+	  unsigned int d1 = readmem.read (voff);
+	  unsigned int d2 = readmem.read (voff | 1);
+	  unsigned int bg = (d2 / 16) % 8;
+	  unsigned int fg = d2 % 8;
+	  unsigned int addr;
+	  if (!(d2 & 128))
+	    addr = d1 << 5;
+	  else
 	    {
-	      drawaddr = i * 640 * 18;
-	      for (j = 0 ; j < l ; j++)
+	      int code, right;
+	      unsigned int d3;
+	      if (!(d2 & 8))
 		{
-		  d1 = readmem.read (k & maskdat);
-		  d2 = readmem.read ((k + 1) & maskdat);
-		  bg = (d2 / 16) % 8;
-		  fg = d2 % 8;
-		  if (!(d2 & 128))
-		    addr = d1 << 5;
-		  else
-		    {
-		      int code, right;
-		      if (!(d2 & 8))
-			{
-			  d3 = readmem.read ((k + 2) & maskdat);
-			  code = d1 * 256 + d3;
-			  right = 0;
-			}
-		      else
-			{
-			  d3 = readmem.read ((k-2) & maskdat);
-			  code = d3 * 256 + d1;
-			  right = 1;
-			}
-		      if (code >= 0xf000) // Gaiji support
-			{	// FIXME: hardware compares address?
-			  code &= 0x3f;
-			  code |= 0x8400;
-			}
-		      addr = ((code & 0x1fff) << 5) + right;
-		    }
-		  for (m = 0 ; m < 16 ; m++)
-		    {
-		      e = drawaddr + 640 * m;
-		      d = kanjirom.read (addr);
-		      if (x80 == true)
-			for (n = 0 ; n < 8 ; n++)
-			  p[e++] = (d & 128) ? fg : bg, d *= 2;
-		      else
-			for (n = 0 ; n < 8 ; n++)
-			  p[e] = p[e + 1] = (d & 128) ? fg : bg, d *= 2,
-			    e += 2;
-		      addr += 2;
-		    }
-		  for (; m < 18 ; m++)
-		    {
-		      e = drawaddr + 640 * m;
-		      if (x80 == true)
-			for (n = 0 ; n < 8 ; n++)
-			  p[e++] = bg;
-		      else
-			for (n = 0 ; n < 8 ; n++)
-			  p[e] = p[e + 1] = bg, e += 2;
-		    }
-		  drawaddr += x80 ? 8 : 16;
-		  k += 2;
+		  d3 = readmem.read (readtop | (((ma << 1) + 2) & 0x3fff));
+		  code = d1 * 256 + d3;
+		  right = 0;
 		}
-	    }
-	  if (cursorcount < (14318180 / 8))
-	    {
-	      i = crtcdata[14] * 256 + crtcdata[15]
-		- (crtcdata[12] * 256 + crtcdata[13]);
-	      j = (i / l) * 640 * 18 - 1;
-	      j += (i % l) * (x80 ? 8 : 16);
-	      i = crtcdata[10];
-	      if ((i & 96) != 32)
+	      else
 		{
-		  if (i < 0)
-		    i = 0;
-		  if (i > 17)
-		    i = 17;
-		  j += i * 640;
-		  n = crtcdata[11];
-		  if (n > 17)
-		    n = 17;
-		  for (; i <= n ; i++)
-		    {
-		      for (k = x80 ? 8 : 16 ; k > 0 ; k--)
-			p[(j + k) % (640 * 200)] = 15;
-		      j += 640;
-		    }
+		  d3 = readmem.read (readtop | (((ma << 1) - 2) & 0x3fff));
+		  code = d3 * 256 + d1;
+		  right = 1;
 		}
+	      if (code >= 0xf000) // Gaiji support
+		{	// FIXME: hardware compares address?
+		  code &= 0x3f;
+		  code |= 0x8400;
+		}
+	      addr = ((code & 0x1fff) << 5) + right;
 	    }
+	  unsigned int d = 0;
+	  if (cursor)
+	    d = 0xff;
+	  else if (ra < 16)
+	    d = kanjirom.read (addr | (ra << 1));
+	  if (mode1 & 1)
+	    for (int n = 0; n < 8; n++, d <<= 1)
+	      draw1 (&p, (d & 128) ? fg : bg);
+	  else
+	    for (int n = 0; n < 8; n++, d <<= 1)
+	      draw2 (&p, (d & 128) ? fg : bg);
 	}
       else			// 25 lines
 	{
-	  int i, j, k, l, bg, fg, d1, d2, addr, m, n, drawaddr, d, e;
-
-	  k = readtop;
-	  l = x80 ? 80 : 40;
-	  for (i = 0 ; i < 25 ; i++)
+	  unsigned int voff = readtop | ((ma << 1) & 0x3fff);
+	  unsigned int d1 = readmem.read (voff);
+	  unsigned int d2 = readmem.read (voff | 1);
+	  unsigned int bg = (d2 / 16) % 16;
+	  unsigned int fg = d2 % 16;
+	  if (mode2 & 2)	// Blinking enabled
 	    {
-	      drawaddr = i * 640 * 8;
-	      for (j = 0 ; j < l ; j++)
-		{
-		  d1 = readmem.read (k & maskdat);
-		  d2 = readmem.read ((k + 1) & maskdat);
-		  bg = (d2 / 16) % 16;
-		  fg = d2 % 16;
-		  if (mode2[vp] & 2) // Blinking enabled
-		    {
-		      bg %= 8;
-		      // FIXME: blink rate and timing
-		      if ((d2 & 0x80) && blinkcount < (14318180 / 4))
-			fg = bg;
-		    }
-		  addr = (d1 << 5) + 1 + (vp ? 0 : 16);
-		  if (vp)
-		    {
-		      for (m = 0 ; m < 8 ; m++)
-			{
-			  e = drawaddr + 640 * m;
-			  d = kanjirom.read (addr);
-			  if (x80 == true)
-			    for (n = 0 ; n < 8 ; n++)
-			      p[e++] = (d & 128) ? fg : bg, d *= 2;
-			  else
-			    for (n = 0 ; n < 8 ; n++)
-			      p[e] = p[e + 1] = (d & 128) ? fg : bg, d *= 2,
-				e += 2;
-			  addr += 2;
-			}
-		      for (; m < 8 ; m++)
-			{
-			  e = drawaddr + 640 * m;
-			  if (x80 == true)
-			    for (n = 0 ; n < 8 ; n++)
-			      p[e++] = bg;
-			  else
-			    for (n = 0 ; n < 8 ; n++)
-			      p[e] = p[e + 1] = bg, e += 2;
-			}
-		    }
-		  else
-		    {
-		      for (m = 0 ; m < 8 ; m++)
-			{
-			  e = drawaddr + 640 * m;
-			  d = kanjirom.read (addr);
-			  if (x80 == true)
-			    for (n = 0 ; n < 8 ; n++)
-			      p[e] &= 15, p[e++] |= ((d & 128) ? fg : bg) << 4,
-				d *= 2;
-			  else
-			    for (n = 0 ; n < 8 ; n++)
-			      ctmp = ((d & 128) ? fg : bg) << 4, p[e] = (p[e] & 15) | ctmp, p[e + 1] = (p[e + 1] & 15) | ctmp, d *= 2,
-				e += 2;
-			  addr += 2;
-			}
-		      for (; m < 8 ; m++)
-			{
-			  e = drawaddr + 640 * m;
-			  if (x80 == true)
-			    for (n = 0 ; n < 8 ; n++)
-			      p[e] &= 15, p[e++] |= bg << 4;
-			  else
-			    for (n = 0 ; n < 8 ; n++)
-			      ctmp = bg << 4, p[e] = (p[e] & 15) | ctmp, p[e + 1] = (p[e + 1] & 15) | ctmp, e += 2;
-			}
-		    }
-		  drawaddr += x80 ? 8 : 16;
-		  k += 2;
-		}
+	      bg %= 8;
+	      // FIXME: blink rate and timing
+	      if ((d2 & 0x80) && blinkcount < (14318180 / 4))
+		fg = bg;
 	    }
-	  if (cursorcount < (14318180 / 8))
-	    {
-	      i = crtcdata[14] * 256 + crtcdata[15]
-		- (crtcdata[12] * 256 + crtcdata[13]);
-	      j = (i / l) * 640 * 8 - 1;
-	      j += (i % l) * (x80 ? 8 : 16);
-	      i = crtcdata[10];
-	      if ((i & 96) != 32)
-		{
-		  if (i < 0)
-		    i = 0;
-		  if (i > 8)
-		    i = 8;
-		  j += i * 640;
-		  n = crtcdata[11];
-		  if (n > 8)
-		    n = 8;
-		  if (vp)
-		    {
-		      for (; i <= n ; i++)
-			{
-			  for (k = x80 ? 8 : 16 ; k > 0 ; k--)
-			    p[(j + k) % (640 * 200)] = 15;
-			  j += 640;
-			}
-		    }
-		  else
-		    {
-		      for (; i <= n ; i++)
-			{
-			  for (k = x80 ? 8 : 16 ; k > 0 ; k--)
-			    p[(j + k) % (640 * 200)] |= 15 * 16;
-			  j += 640;
-			}
-		    }
-		}
-	    }
+	  unsigned int addr = (d1 << 5) + 1 + (vp ? 0 : 16);
+	  unsigned int d = 0;
+	  if (cursor)
+	    d = 0xff;
+	  else if (ra < 8)
+	    d = kanjirom.read (addr | (ra << 1));
+	  if (mode1 & 1)
+	    for (int n = 0; n < 8; n++, d <<= 1)
+	      draw1 (&p, (d & 128) ? fg : bg);
+	  else
+	    for (int n = 0; n < 8; n++, d <<= 1)
+	      draw2 (&p, (d & 128) ? fg : bg);
 	}
     }
-  else				// Graphic mode
+  else			// Graphic mode
     {
-      int x, c, y, i, j, k, d, d1, d2, l, m;
-
-      if (mode1[vp] & 16)
-	{
-	  c = 4;
-	  if (mode1[vp] & 1)
-	    x = 2;
-	  else
-	    x = 4;
-	}
+      int c;
+      if (mode1 & 16)
+	c = 4;
+      else if (mode2 & 8)
+	c = 1;
       else
+	c = 2;
+      unsigned int voff;
+      if (mode1 & 1)
+	voff = (readtop & ~0x7fff) | ((gra << 13) & 0x6000) |
+	  ((gma << 1) & 0x1fff);
+      else
+	voff = (readtop & ~0x3fff) | ((gra << 13) & 0x2000) |
+	  ((gma << 1) & 0x1fff);
+      unsigned int d1 = readmem.read (voff);
+      unsigned int d2 = readmem.read (voff | 1);
+      switch (c)
 	{
-	  if (mode2[vp] & 8)
-	    c = 1, x = 1;
+	case 1:
+	  for (int n = 0; n < 8; n++, d1 <<= 1)
+	    draw1 (&p, (d1 & 0x80) >> 7);
+	  for (int n = 0; n < 8; n++, d2 <<= 1)
+	    draw1 (&p, (d2 & 0x80) >> 7);
+	  break;
+	case 2:
+	  if (mode1 & 1)
+	    for (int n = 0; n < 8; n++, d1 <<= 1, d2 <<= 1)
+	      draw1 (&p, ((d1 & 0x80) >> 7) | ((d2 & 0x80) >> 6));
 	  else
 	    {
-	      c = 2;
-	      if (mode1[vp] & 1)
-		x = 1;
-	      else
-		x = 2;
+	      for (int n = 0; n < 4; n++, d1 <<= 2)
+		draw2 (&p, (d1 & 0xc0) >> 6);
+	      for (int n = 0; n < 4; n++, d2 <<= 2)
+		draw2 (&p, (d2 & 0xc0) >> 6);
 	    }
-	}
-      if (mode1[vp] & 1)
-	y = 4;
-      else
-	y = 2;
-      for (i = 0 ; i < 200 ; i += y)
-	{
-	  for (m = 40 * i ; m < 0x2000 * y ; m += 0x2000)
+	  break;
+	case 4:
+	  if (mode1 & 1)
 	    {
-	      j = m + readtop;
-	      switch (c)
-		{
-		case 1:
-		  if (vp)
-		    {
-		      for (k = 0 ; k < 80 ; k++)
-			{
-			  d = readmem.read ((j++) & maskdat);
-			  p[7] = d & 1, d >>= 1;
-			  p[6] = d & 1, d >>= 1;
-			  p[5] = d & 1, d >>= 1;
-			  p[4] = d & 1, d >>= 1;
-			  p[3] = d & 1, d >>= 1;
-			  p[2] = d & 1, d >>= 1;
-			  p[1] = d & 1, d >>= 1;
-			  p[0] = d & 1;
-			  p += 8;
-			}
-		    }
-		  else
-		    {
-		      for (k = 0 ; k < 80 ; k++)
-			{
-			  d = readmem.read ((j++) & maskdat);
-			  p[7] &= 15;
-			  p[6] &= 15;
-			  p[5] &= 15;
-			  p[4] &= 15;
-			  p[3] &= 15;
-			  p[2] &= 15;
-			  p[1] &= 15;
-			  p[0] &= 15;
-			  p[7] |= (d & 1) << 4, d >>= 1;
-			  p[6] |= (d & 1) << 4, d >>= 1;
-			  p[5] |= (d & 1) << 4, d >>= 1;
-			  p[4] |= (d & 1) << 4, d >>= 1;
-			  p[3] |= (d & 1) << 4, d >>= 1;
-			  p[2] |= (d & 1) << 4, d >>= 1;
-			  p[1] |= (d & 1) << 4, d >>= 1;
-			  p[0] |= (d & 1) << 4;
-			  p += 8;
-			}
-		    }
-		  break;
-		case 2:
-		  if (x == 2)
-		    {
-		      if (vp)
-			{
-			  for (k = 0 ; k < 80 ; k++)
-			    {
-			      d = readmem.read ((j++) & maskdat);
-			      p[7] = p[6] = d & 3; d >>= 2;
-			      p[5] = p[4] = d & 3; d >>= 2;
-			      p[3] = p[2] = d & 3; d >>= 2;
-			      p[1] = p[0] = d & 3;
-			      p += 8;
-			    }
-			}
-		      else
-			{
-			  for (k = 0 ; k < 80 ; k++)
-			    {
-			      d = readmem.read ((j++) & maskdat);
-			      p[7] &= 15;
-			      p[6] &= 15;
-			      p[5] &= 15;
-			      p[4] &= 15;
-			      p[3] &= 15;
-			      p[2] &= 15;
-			      p[1] &= 15;
-			      p[0] &= 15;
-			      ctmp = (d & 3) << 4; d >>= 2; p[7] |= ctmp; p[6] |= ctmp;
-			      ctmp = (d & 3) << 4; d >>= 2; p[5] |= ctmp; p[4] |= ctmp;
-			      ctmp = (d & 3) << 4; d >>= 2; p[3] |= ctmp; p[2] |= ctmp;
-			      ctmp = (d & 3) << 4; p[1] |= ctmp; p[0] |= ctmp;
-			      p += 8;
-			    }
-			}
-		    }
-		  else
-		    {
-		      if (vp)
-			{
-			  for (k = 0 ; k < 80 ; k++)
-			    {
-			      d = readmem.read ((j++) & maskdat);
-			      p[7] = d & 1, d >>= 1;
-			      p[6] = d & 1, d >>= 1;
-			      p[5] = d & 1, d >>= 1;
-			      p[4] = d & 1, d >>= 1;
-			      p[3] = d & 1, d >>= 1;
-			      p[2] = d & 1, d >>= 1;
-			      p[1] = d & 1, d >>= 1;
-			      p[0] = d & 1;
-			      d = readmem.read ((j++) & maskdat);
-			      p[7] |= 2 * (d & 1), d >>= 1;
-			      p[6] |= 2 * (d & 1), d >>= 1;
-			      p[5] |= 2 * (d & 1), d >>= 1;
-			      p[4] |= 2 * (d & 1), d >>= 1;
-			      p[3] |= 2 * (d & 1), d >>= 1;
-			      p[2] |= 2 * (d & 1), d >>= 1;
-			      p[1] |= 2 * (d & 1), d >>= 1;
-			      p[0] |= 2 * (d & 1);
-			      p += 8;
-			    }
-			}
-		      else
-			{
-			  for (k = 0 ; k < 80 ; k++)
-			    {
-			      d = readmem.read ((j++) & maskdat);
-			      p[7] &= 15;
-			      p[6] &= 15;
-			      p[5] &= 15;
-			      p[4] &= 15;
-			      p[3] &= 15;
-			      p[2] &= 15;
-			      p[1] &= 15;
-			      p[0] &= 15;
-			      p[7] |= (d & 1) << 4, d >>= 1;
-			      p[6] |= (d & 1) << 4, d >>= 1;
-			      p[5] |= (d & 1) << 4, d >>= 1;
-			      p[4] |= (d & 1) << 4, d >>= 1;
-			      p[3] |= (d & 1) << 4, d >>= 1;
-			      p[2] |= (d & 1) << 4, d >>= 1;
-			      p[1] |= (d & 1) << 4, d >>= 1;
-			      p[0] |= (d & 1) << 4;
-			      d = readmem.read ((j++) & maskdat);
-			      p[7] |= 32 * (d & 1), d >>= 1;
-			      p[6] |= 32 * (d & 1), d >>= 1;
-			      p[5] |= 32 * (d & 1), d >>= 1;
-			      p[4] |= 32 * (d & 1), d >>= 1;
-			      p[3] |= 32 * (d & 1), d >>= 1;
-			      p[2] |= 32 * (d & 1), d >>= 1;
-			      p[1] |= 32 * (d & 1), d >>= 1;
-			      p[0] |= 32 * (d & 1);
-			      p += 8;
-			    }
-			}
-		    }
-		  break;
-		case 4:
-		  if (vp)
-		    {
-		      for (k = 40 * y ; k > 0 ; k--)
-			{
-			  d = readmem.read ((j++) & maskdat);
-			  d1 = d / 16;
-			  d2 = d % 16;
-			  for (l = 0 ; l < x ; l++)
-			    *p++ = d1;
-			  for (l = 0 ; l < x ; l++)
-			    *p++ = d2;
-			}
-		    }
-		  else
-		    {
-		      for (k = 40 * y ; k > 0 ; k--)
-			{
-			  d = readmem.read ((j++) & maskdat);
-			  d1 = d / 16;
-			  d2 = d % 16;
-			  ctmp = d1 << 4;
-			  for (l = 0 ; l < x ; l++)
-			    *p &= 15, *p++ |= ctmp;
-			  ctmp = d2 << 4;
-			  for (l = 0 ; l < x ; l++)
-			    *p &= 15, *p++ |= ctmp;
-			}
-		    }
-		  break;
-		}
+	      draw2 (&p, d1 >> 4);
+	      draw2 (&p, d1);
+	      draw2 (&p, d2 >> 4);
+	      draw2 (&p, d2);
 	    }
+	  else
+	    {
+	      draw2 (&p, d1 >> 4);
+	      draw2 (&p, d1 >> 4);
+	      draw2 (&p, d1);
+	      draw2 (&p, d1);
+	      draw2 (&p, d2 >> 4);
+	      draw2 (&p, d2 >> 4);
+	      draw2 (&p, d2);
+	      draw2 (&p, d2);
+	    }
+	  break;
 	}
     }
+  return p;
+}
+
+int
+jvideo::convsub (unsigned char *p, int vp)
+{
+  int readtop;
+
+  jmem &readmem = vp ? vram : program;
+  readtop = vp ? (pagereg[1] & 3) * 16384 : (pagereg[0] & 7) * 16384;
+  if (!(mode1[vp] & 8))
+    return 2;
+  j46505 &crtc_ = vp ? crtc2 : crtc;
+  j46505 &crtc = crtc_;
+  unsigned int draw_addr = 0;
+  // Manage graphic screen address itself instead of using CRTC output
+  // directly to support superimpose with VP2 text screen
+  unsigned int gma0 = crtc.get_ma ();
+  unsigned int gma = gma0;
+  unsigned int gra = 0;
+  while (!crtc.get_vsync () && draw_addr < 640 * 200)
+    {
+      unsigned char buf[16];
+      int len = draw_ma (buf, vp, crtc.get_ma (), crtc.get_ra (), gma, gra,
+			 crtc.get_cursor (true), readmem, kanjirom, readtop,
+			 mode1[vp], mode2[vp], blinkcount) - buf;
+      if (vp)
+	memcpy (&p[draw_addr], buf, len);
+      else
+	for (int i = 0; i < len; i++)
+	  p[draw_addr + i] = (p[draw_addr + i] & 0xf) | (buf[i] << 4);
+      draw_addr += len;
+      crtc.tick ();
+      gma++;
+      if (!crtc.get_disp ())
+	{
+	  gra++;
+	  if (gra == (mode1[vp] & 1 ? 4 : 2))
+	    {
+	      gma0 = gma;
+	      gra = 0;
+	    }
+	  else
+	    gma = gma0;
+	}
+      while (!crtc.get_vsync () && (crtc.get_hsync () || !crtc.get_disp ()))
+	crtc.tick ();
+    }
+  while (draw_addr < 640 * 200)
+    {
+      if (vp)
+	p[draw_addr] = bordercolor;
+      else
+	p[draw_addr] = (p[draw_addr] & 0xf) | (bordercolor << 4);
+      draw_addr++;
+    }
+  while (!crtc.get_vsync ())
+    crtc.tick ();
+  while (crtc.get_vsync ())
+    crtc.tick ();
+  while (!crtc.get_disp ())
+    crtc.tick ();
   return 0;
 }
 
@@ -1011,4 +785,24 @@ jvideo::j46505::tick ()
 	  framecount++;
 	}
     }
+}
+
+void
+jvideo::out3d4 (unsigned char data)
+{
+  crtc.outb (0, data);
+  crtc2.outb (0, data);
+}
+
+unsigned char
+jvideo::in3d5 ()
+{
+  return crtc.inb (1);
+}
+
+void
+jvideo::out3d5 (unsigned char data)
+{
+  crtc.outb (1, data);
+  crtc2.outb (1, data);
 }
