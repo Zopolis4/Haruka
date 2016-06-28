@@ -38,6 +38,7 @@ private:
     bool get_vsync ();
     bool get_cursor ();
     unsigned int get_ma ();
+    unsigned int get_ra ();
     unsigned int inb (unsigned int addr);
     void outb (unsigned int addr, unsigned int val);
   };

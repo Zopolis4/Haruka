@@ -925,6 +925,12 @@ jvideo::j46505::get_ma ()
   return iy * reg[HDISP] + ix + (reg[SADDRLOW] | reg[SADDRHIGH] << 8);
 }
 
+unsigned int
+jvideo::j46505::get_ra ()
+{
+  return ira;
+}
+
 bool
 jvideo::j46505::get_cursor ()
 {
