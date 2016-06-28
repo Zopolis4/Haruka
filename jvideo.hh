@@ -48,16 +48,25 @@ private:
   jmem &program;		// Programmable RAM
   jmem vram;			// 32KB VRAM + 32KB VRAM
   jmem &kanjirom;
-  int vsynccount, cursorcount;
   int blinkcount;
-  int vsyncintflag;
-  t16 dat3da;
   unsigned char v3da;
   int pagereg[2];
-  void conv ();
-  int convsub (unsigned char *p);
+  unsigned int convcount;
+  int draw_x, draw_y;
+  bool gma_reset;
+  unsigned int gma10;
+  unsigned int gma20;
+  unsigned int gma1;
+  unsigned int gma2;
+  unsigned int gra1;
+  unsigned int gra2;
+  unsigned char last_color;
+  unsigned int vsynccount;
+  void convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
+		int len, unsigned char *p, bool disp);
+  void conv (int clockcount, bool drawflag);
+  void convtick (bool disp);
   int index3d4;
-  int hsynccount;
 protected:
   int mode1[2], palettemask[2], mode2[2];
   unsigned char *drawdata;
@@ -79,14 +88,14 @@ public:
     return program.write ((offset + ((pagereg[0] >> 3) & 7) * 16384) & 131071,
 			   data);
   }
-  t16 in3da (bool vp2) { flag3da[vp2 ? 1 : 0] = 0; return dat3da ^= 16; }
+  unsigned int in3da (bool vp2);
   void out3da (bool vp2, unsigned char data);
   void out3df (unsigned char data) { pagereg[0] = data; }
   void out3d9 (unsigned char data) { pagereg[1] = data; }
   void out3d4 (unsigned char data);
   unsigned char in3d5 ();
   void out3d5 (unsigned char data);
-  void clk (int clockcount, bool stopflag);
+  void clk (int clockcount, bool drawflag);
   //virtual void draw () = 0;
   bool pcjrmem () { return (mode2[1] & 16) ? true : false; }
   //virtual void floppyaccess (int n);

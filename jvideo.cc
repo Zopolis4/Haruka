@@ -36,7 +36,6 @@ jvideo::~jvideo ()
   SDL_FreeSurface (mysurface2);
   SDL_FreeSurface (mysurface);
   SDL_FreePalette (mypalette);
-  delete[] drawdata;
 }
 
 void
@@ -63,38 +62,27 @@ jvideo::clk (int clockcount, bool drawflag)
   // 912*n+136 ... 912*n+776  dots (n = 31 ... 230)
   // 912*n+776 ... 912*n+844  dummy (n = 31 ... 230)
   // 912*231-68 ... 912*262  dummy
-  vsynccount += clockcount;
-  cursorcount += clockcount;
+  conv (clockcount, drawflag);
   blinkcount += clockcount;
-  while (cursorcount >= (14318180 / 4))
-    cursorcount -= (14318180 / 4);
   while (blinkcount >= (14318180 / 2))
     blinkcount -= (14318180 / 2);
-  if (vsynccount > 912 * 262)
-    {
-      vsynccount -= 912 * 262, dat3da |= 8, vsyncintflag = 1,
-	trigger_irq8259 (5);
-      if (drawflag)
-	{
-	  conv ();
-	  draw ();
-	}
-    }
-  if (vsyncintflag && vsynccount > 500)
-    vsyncintflag = 0, untrigger_irq8259 (5);
-  if (vsynccount > 912 * 10)
-    {
-      dat3da &= ~8;
-      hsynccount = (vsynccount + 456) / 912;
-      if (31 <= hsynccount && hsynccount <= 230)
-	{
-	  if (912 * hsynccount - 136 < vsynccount &&
-	      vsynccount < 912 * hsynccount + 136)
-	    dat3da |= 1;
-	  else
-	    dat3da &= ~1;
-	}
-    }
+}
+
+unsigned int
+jvideo::in3da (bool vp2)
+{
+  flag3da[vp2] = 0;		// Set address state; FIXME: Is the
+				// state managed in VP1 and VP2
+				// separately?
+  unsigned int ret = 0x6;	// FIXME: Light pen not implemented
+  // Maybe some bits in VP2 status register are not available.
+  if (crtc.get_disp ())
+    ret |= 0x1;
+  if (crtc.get_vsync ())
+    ret |= 0x8;
+  if (last_color & (1 << (v3da & 0x3)))
+    ret |= 0x10;
+  return ret;
 }
 
 void
@@ -298,96 +286,14 @@ draw_ma (unsigned char *p, int vp, unsigned int ma, unsigned int ra,
   return p;
 }
 
-int
-jvideo::convsub (unsigned char *p)
+void
+jvideo::convtick (bool disp)
 {
-  int readtop1 = (pagereg[0] & 7) * 16384;
-  int readtop2 = (pagereg[1] & 3) * 16384;
-  int enable1 = mode1[0] & 8;
-  int enable2 = mode1[1] & 8;
-  int si = superimpose & 0xf;
-  unsigned int draw_addr = 0;
-  // Manage graphic screen address itself instead of using CRTC output
-  // directly to support superimpose with VP2 text screen
-  unsigned int gma10 = crtc.get_ma ();
-  unsigned int gma20 = crtc.get_ma ();
-  unsigned int gma1 = gma10;
-  unsigned int gma2 = gma20;
-  unsigned int gra1 = 0;
-  unsigned int gra2 = 0;
-  while (!crtc.get_vsync () && draw_addr < 640 * 200)
+  // Manage graphic screen address itself instead of using CRTC
+  // output directly to support superimpose with VP2 text screen
+  crtc.tick ();
+  if (disp)
     {
-      unsigned char buf1[16], buf2[16];
-      int len1 = 0, len2 = 0, len;
-      if (enable1)
-	len1 = draw_ma (buf1, 0, crtc.get_ma (), crtc.get_ra (), gma1, gra1,
-			crtc.get_cursor (true), program, kanjirom, readtop1,
-			mode1[0], mode2[0], blinkcount) - buf1;
-      if (enable2)
-	len2 = draw_ma (buf2, 1, crtc.get_ma (), crtc.get_ra (), gma2, gra2,
-			crtc.get_cursor (true), vram, kanjirom, readtop2,
-			mode1[1], mode2[1], blinkcount) - buf2;
-      len = len1;
-      if (len1 < len2)
-	len = len2;
-      if (si & 0xe)
-	{
-	  if (len1 < len2)
-	    memset (&buf1[len1], 0, len2 - len1);
-	  else if (len1 > len2)
-	    memset (&buf2[len2], 0, len1 - len2);
-	}
-      switch (si)
-	{
-	case 0x0:
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf1[i]];
-	  break;
-	case 0x1:
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf2[i]];
-	  break;
-	case 0x2:
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf1[i] == transpalette ?
-				       buf2[i] : buf1[i]];
-	  break;
-	case 0x3:		// FIXME: Is this correct?
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf1[i] != transpalette ?
-				       buf2[i] : buf1[i]];
-	  break;
-	case 0x6:
-	  if (mode1[1] & 0x80)
-	    {
-	      for (int i = 0; i < len; i++)
-		p[draw_addr + i] = palette[(buf1[i] | (buf2[i] << 2))];
-	      break;
-	    }
-	  // Fall through
-	case 0x4:
-	case 0x5:
-	case 0x7:
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf1[i] ^ buf2[i]];
-	  break;
-	case 0x8:
-	case 0x9:
-	case 0xa:
-	case 0xb:
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf1[i] & buf2[i]];
-	  break;
-	case 0xc:
-	case 0xd:
-	case 0xe:
-	case 0xf:
-	  for (int i = 0; i < len; i++)
-	    p[draw_addr + i] = palette[buf1[i] | buf2[i]];
-	  break;
-	}
-      draw_addr += len;
-      crtc.tick ();
       gma1++;
       gma2++;
       if (!crtc.get_disp ())
@@ -409,24 +315,175 @@ jvideo::convsub (unsigned char *p)
 	  else
 	    gma2 = gma20;
 	}
-      while (!crtc.get_vsync () && (crtc.get_hsync () || !crtc.get_disp ()))
-	crtc.tick ();
     }
-  while (draw_addr < 640 * 200)
-    p[draw_addr++] = bordercolor;
-  while (!crtc.get_vsync ())
-    crtc.tick ();
-  while (crtc.get_vsync ())
-    crtc.tick ();
-  while (!crtc.get_disp ())
-    crtc.tick ();
-  return 0;
 }
 
 void
-jvideo::conv ()
+jvideo::convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
+		 int len, unsigned char *p, bool disp)
 {
-  convsub (drawdata);
+  if (disp)
+    {
+      unsigned char buf1[16], buf2[16];
+      if ((!enable1 && si == 0x0) || (!enable2 && si == 0x1))
+	{
+	  memset (p, bordercolor, len);
+	  goto disabled;
+	}
+      if (enable1 && si != 0x1)
+	draw_ma (buf1, 0, crtc.get_ma (), crtc.get_ra (), gma1, gra1,
+		 crtc.get_cursor (true), program, kanjirom, readtop1,
+		 mode1[0], mode2[0], blinkcount);
+      if (enable2 && si != 0x0)
+	draw_ma (buf2, 1, crtc.get_ma (), crtc.get_ra (), gma2, gra2,
+		 crtc.get_cursor (true), vram, kanjirom, readtop2,
+		 mode1[1], mode2[1], blinkcount);
+      if (si & 0xe)
+	{
+	  if (!enable1)
+	    memset (&buf1[0], 0, len);
+	  if (!enable2)
+	    memset (&buf2[0], 0, len);
+	}
+      switch (si)
+	{
+	case 0x0:
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf1[i]];
+	  break;
+	case 0x1:
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf2[i]];
+	  break;
+	case 0x2:
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf1[i] == transpalette ? buf2[i] : buf1[i]];
+	  break;
+	case 0x3:		// FIXME: Is this correct?
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf1[i] != transpalette ? buf2[i] : buf1[i]];
+	  break;
+	case 0x6:
+	  if (mode1[1] & 0x80)
+	    {
+	      for (int i = 0; i < len; i++)
+		p[i] = palette[(buf1[i] | (buf2[i] << 2)) ^ 0xa];
+	      break;
+	    }
+	  // Fall through
+	case 0x4:
+	case 0x5:
+	case 0x7:
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf1[i] ^ buf2[i]];
+	  break;
+	case 0x8:
+	case 0x9:
+	case 0xa:
+	case 0xb:
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf1[i] & buf2[i]];
+	  break;
+	case 0xc:
+	case 0xd:
+	case 0xe:
+	case 0xf:
+	  for (int i = 0; i < len; i++)
+	    p[i] = palette[buf1[i] | buf2[i]];
+	  break;
+	}
+    disabled:
+      last_color = p[len - 1];
+      convtick (true);
+    }
+  else
+    {
+      if (p)
+	memset (p, bordercolor, len);
+      convtick (crtc.get_disp ());
+    }
+}
+
+void
+jvideo::conv (int clockcount, bool drawflag)
+{
+  int readtop1 = (pagereg[0] & 7) * 16384;
+  int readtop2 = (pagereg[1] & 3) * 16384;
+  int enable1 = mode1[0] & 8;
+  int enable2 = mode1[1] & 8;
+  int si = superimpose & 0xf;
+  bool len8 = (si != 0x1 && (mode1[0] & 1)) || (si != 0x0 && (mode1[1] & 1));
+  unsigned int len = len8 ? 8 : 16;
+  convcount += clockcount;
+  if (convcount < len)
+    return;
+  if (SDL_MUSTLOCK (mysurface))
+    SDL_LockSurface (mysurface);
+  while (convcount >= len)
+    {
+      bool hsync = crtc.get_hsync ();
+      bool vsync = crtc.get_vsync ();
+      bool disp = crtc.get_disp ();
+      if (disp && gma_reset)
+	{
+	  gma1 = gma2 = gma10 = gma20 = crtc.get_ma ();
+	  gra1 = gra2 = 0;
+	  gma_reset = false;
+	}
+      if (disp && draw_y < 200 && draw_x + len <= 640)
+	{
+	  convsub (readtop1, readtop2, enable1, enable2, si, len,
+		   static_cast<unsigned char *> (mysurface->pixels) +
+		   draw_y * mysurface->pitch + draw_x, true);
+	  draw_x += len;
+	}
+      else
+	convsub (readtop1, readtop2, enable1, enable2, si, len, NULL, false);
+      if (draw_x && hsync)
+	{
+	  for (; draw_x < 640; draw_x++)
+	    *(static_cast<unsigned char *> (mysurface->pixels) +
+	      draw_y * mysurface->pitch + draw_x) = bordercolor;
+	  draw_x = 0;
+	  draw_y++;
+	}
+      if (vsync)
+	{
+	  if (!vsynccount)
+	    {
+	      if (drawflag)
+		{
+		  for (; draw_y < 200; draw_y++, draw_x = 0)
+		    for (; draw_x < 640; draw_x++)
+		      *(static_cast<unsigned char *> (mysurface->pixels) +
+			draw_y * mysurface->pitch + draw_x) = bordercolor;
+		  if (SDL_MUSTLOCK (mysurface))
+		    SDL_UnlockSurface (mysurface);
+		  draw ();
+		  if (SDL_MUSTLOCK (mysurface))
+		    SDL_LockSurface (mysurface);
+		}
+	      trigger_irq8259 (5);
+	      draw_x = draw_y = 0;
+	      gma_reset = true;
+	    }
+	  vsynccount += len;
+	  if (vsynccount == 0x200) // FIXME: Interrupt trigger for 512 cycles?
+	    untrigger_irq8259 (5);
+	}
+      else
+	{
+	  if (vsynccount)
+	    {
+	      if (vsynccount < 0x200)
+		untrigger_irq8259 (5);
+	      vsynccount = 0;
+	    }
+	}
+      convcount -= len;
+    }
+  if (SDL_MUSTLOCK (mysurface))
+    SDL_UnlockSurface (mysurface);
 }
 
 void
@@ -458,16 +515,15 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
   };
   int i;
 
-  drawdata = new unsigned char[640 * 200];
-  vsynccount = 0;
-  cursorcount = 0;
   blinkcount = 0;
-  vsyncintflag = 0;
-  dat3da = 0;
   flag3da[0] = flag3da[1] = 0;
   pagereg[0] = pagereg[1] = 0;
   for (i = 0 ; i < 16 ; i++)
     palette[i] = 0;
+  convcount = 0;
+  draw_x = draw_y = 0;
+  gma_reset = true;
+  vsynccount = 0;
 
   jvideo::window = window;
   jvideo::surface = surface;
@@ -488,24 +544,6 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
 void
 jvideo::draw ()
 {
-  unsigned char *q;
-  int i;
-  q = drawdata;
-  if (SDL_MUSTLOCK (mysurface))
-    {
-      if (SDL_LockSurface (mysurface) < 0)
-	{
-	  cerr << "lock failed" << endl;
-	  return;
-	}
-    }
-  for (i = 0 ; i < 200 ; i++)
-    {
-      memcpy ((Uint8 *)mysurface->pixels + i * mysurface->pitch, q, 640);
-      q += 640;
-    }
-  if (SDL_MUSTLOCK (mysurface))
-    SDL_UnlockSurface (mysurface);
   SDL_BlitSurface (mysurface, NULL, mysurface2, NULL);
   SDL_BlitScaled (mysurface2, NULL, surface, NULL);
   SDL_UpdateWindowSurface (window);
