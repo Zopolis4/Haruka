@@ -94,7 +94,6 @@ struct maindata
   jevent *event;
   jkey *keybd;
   SDL_Window *window;
-  SDL_Surface *surface;
 };
 
 class devrom : public jio1ffdev
@@ -535,7 +534,7 @@ sdlmainthread (void *p)
 	}
 
       sdlsound soundclass (11025, 1024 * 4);
-      jvideo videoclass (md->window, md->surface, program, kanjirom);
+      jvideo videoclass (md->window, program, kanjirom);
       jjoy joy;
       stdfdc fdc (videoclass);
       devrom d_irom7 (bus, jio1ffdev::conf (0x00, 0203, 0003, 0074, 0040),
@@ -782,8 +781,8 @@ main (int argc, char **argv)
   atexit(SDL_Quit);
 
   md.window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED,
-				SDL_WINDOWPOS_UNDEFINED, 640, 400, 0);
-  md.surface = SDL_GetWindowSurface (md.window);
+				SDL_WINDOWPOS_UNDEFINED, 672, 432,
+				SDL_WINDOW_RESIZABLE);
   md.endflag = 0;
   md.resetflag = 1;
   md.fdc = 0;

@@ -53,6 +53,8 @@ private:
   int pagereg[2];
   unsigned int convcount;
   int draw_x, draw_y;
+  int disp_start_x, disp_start_y;
+  int new_disp_start_x, new_disp_start_y, new_disp_start_count;
   bool gma_reset;
   unsigned int gma10;
   unsigned int gma20;
@@ -62,6 +64,7 @@ private:
   unsigned int gra2;
   unsigned char last_color;
   unsigned int vsynccount;
+  void correct_disp_pos ();
   void convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
 		int len, unsigned char *p, bool disp);
   void conv (int clockcount, bool drawflag);
@@ -101,14 +104,13 @@ public:
   //virtual void floppyaccess (int n);
 private:
   SDL_Window *window;
-  SDL_Surface *surface;
   SDL_Surface *mysurface;
   SDL_Surface *mysurface2;
   SDL_Palette *mypalette;
   unsigned long *bits;
   unsigned long *bits2;
 public:
-  jvideo (SDL_Window *, SDL_Surface *, jmem &program, jmem &kanjirom)
+  jvideo (SDL_Window *, jmem &program, jmem &kanjirom)
     throw (char *);
   ~jvideo ();
   void draw ();

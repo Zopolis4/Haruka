@@ -31,6 +31,11 @@ extern "C"
   extern void untrigger_irq8259 (unsigned int irq_no);
 }
 
+static const int SURFACE_WIDTH = 800, SURFACE_HEIGHT = 240;
+static const int HSTART = -0x30, VSTART = -1;
+static const int HSYNCSTART = 600, VSYNCSTART = 200;
+static const int HSYNCEND = 1000, VSYNCEND = 300;
+
 jvideo::~jvideo ()
 {
   SDL_FreeSurface (mysurface2);
@@ -319,6 +324,40 @@ jvideo::convtick (bool disp)
 }
 
 void
+jvideo::correct_disp_pos ()
+{
+  // Auto adjust the display position like an LCD monitor for a small
+  // window
+  if (new_disp_start_x == draw_x && new_disp_start_y == draw_y)
+    {
+      if (!new_disp_start_count)
+	{
+	  disp_start_x = draw_x;
+	  disp_start_y = draw_y;
+	}
+      else
+	new_disp_start_count--;
+    }
+  else
+    {
+      new_disp_start_x = draw_x;
+      new_disp_start_y = draw_y;
+      // If the movement is reasonably small, wait for some frames
+      // before applying the movement since applications may change
+      // the sync position temporarily to show shake effect
+      if ((new_disp_start_x > disp_start_x ?
+	   new_disp_start_x - disp_start_x :
+	   disp_start_x - new_disp_start_x) +
+	  (new_disp_start_y > disp_start_y ?
+	   new_disp_start_y - disp_start_y :
+	   disp_start_y - new_disp_start_y) < 5)
+	new_disp_start_count = 16;
+      else
+	new_disp_start_count = 2;
+    }
+}
+
+void
 jvideo::convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
 		 int len, unsigned char *p, bool disp)
 {
@@ -393,7 +432,6 @@ jvideo::convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
 	  break;
 	}
     disabled:
-      last_color = p[len - 1];
       convtick (true);
     }
   else
@@ -429,42 +467,57 @@ jvideo::conv (int clockcount, bool drawflag)
 	  gma1 = gma2 = gma10 = gma20 = crtc.get_ma ();
 	  gra1 = gra2 = 0;
 	  gma_reset = false;
+	  correct_disp_pos ();
 	}
-      if (disp && draw_y < 200 && draw_x + len <= 640)
+      if (draw_y >= 0 && draw_y < SURFACE_HEIGHT && draw_x >= 0 &&
+	  draw_x + len <= SURFACE_WIDTH)
 	{
 	  convsub (readtop1, readtop2, enable1, enable2, si, len,
 		   static_cast<unsigned char *> (mysurface->pixels) +
-		   draw_y * mysurface->pitch + draw_x, true);
-	  draw_x += len;
+		   draw_y * mysurface->pitch + draw_x, disp);
+	  last_color = *(static_cast<unsigned char *> (mysurface->pixels) +
+			 draw_y * mysurface->pitch + draw_x);
 	}
       else
 	convsub (readtop1, readtop2, enable1, enable2, si, len, NULL, false);
-      if (draw_x && hsync)
+      if (hsync)
 	{
-	  for (; draw_x < 640; draw_x++)
-	    *(static_cast<unsigned char *> (mysurface->pixels) +
-	      draw_y * mysurface->pitch + draw_x) = bordercolor;
-	  draw_x = 0;
+	  if (draw_x != HSTART)
+	    draw_x += len;
+	  if (draw_x >= HSYNCSTART)
+	    {
+	      if (draw_y >= 0 && draw_y < SURFACE_HEIGHT)
+		for (; draw_x < SURFACE_WIDTH; draw_x++)
+		  *(static_cast<unsigned char *> (mysurface->pixels) +
+		    draw_y * mysurface->pitch + draw_x) = 0;
+	      draw_x = HSYNCEND;
+	    }
+	}
+      else
+	draw_x += len;
+      if (draw_x >= HSYNCEND)
+	{
+	  draw_x = HSTART;
 	  draw_y++;
 	}
       if (vsync)
 	{
+	  if (draw_y == VSTART)
+	    draw_x = HSTART;
+	  if (draw_y >= VSYNCSTART)
+	    {
+	      if (draw_x < 0)
+		draw_x = 0;
+	      if (drawflag)
+		for (; draw_y < SURFACE_HEIGHT; draw_y++, draw_x = 0)
+		  for (; draw_x < SURFACE_WIDTH; draw_x++)
+		    *(static_cast<unsigned char *> (mysurface->pixels) +
+		      draw_y * mysurface->pitch + draw_x) = 0;
+	      draw_y = VSYNCEND;
+	    }
 	  if (!vsynccount)
 	    {
-	      if (drawflag)
-		{
-		  for (; draw_y < 200; draw_y++, draw_x = 0)
-		    for (; draw_x < 640; draw_x++)
-		      *(static_cast<unsigned char *> (mysurface->pixels) +
-			draw_y * mysurface->pitch + draw_x) = bordercolor;
-		  if (SDL_MUSTLOCK (mysurface))
-		    SDL_UnlockSurface (mysurface);
-		  draw ();
-		  if (SDL_MUSTLOCK (mysurface))
-		    SDL_LockSurface (mysurface);
-		}
 	      trigger_irq8259 (5);
-	      draw_x = draw_y = 0;
 	      gma_reset = true;
 	    }
 	  vsynccount += len;
@@ -480,6 +533,19 @@ jvideo::conv (int clockcount, bool drawflag)
 	      vsynccount = 0;
 	    }
 	}
+      if (draw_y >= VSYNCEND)
+	{
+	  if (drawflag)
+	    {
+	      if (SDL_MUSTLOCK (mysurface))
+		SDL_UnlockSurface (mysurface);
+	      draw ();
+	      if (SDL_MUSTLOCK (mysurface))
+		SDL_LockSurface (mysurface);
+	    }
+	  draw_x = HSTART;
+	  draw_y = VSTART;
+	}
       convcount -= len;
     }
   if (SDL_MUSTLOCK (mysurface))
@@ -491,8 +557,8 @@ jvideo::floppyaccess (int n)
 {
 }
 
-jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
-		jmem &kanjirom_arg) throw (char *)
+jvideo::jvideo (SDL_Window *window, jmem &program_arg, jmem &kanjirom_arg)
+  throw (char *)
   : program (program_arg), vram (65536), kanjirom (kanjirom_arg)
 {
   static SDL_Color cl[16]={
@@ -526,26 +592,70 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
   vsynccount = 0;
 
   jvideo::window = window;
-  jvideo::surface = surface;
-  if (!surface)
-    {
-      cerr << "SDL_SetVideoMode failed: " << SDL_GetError () << endl;
-      throw ("video");
-    }
   mypalette = SDL_AllocPalette (256);
-  mysurface = SDL_CreateRGBSurface (0, 640, 200, 8, 0, 0, 0, 0);
+  mysurface = SDL_CreateRGBSurface (0, SURFACE_WIDTH, SURFACE_HEIGHT, 8, 0, 0,
+				    0, 0);
   SDL_SetSurfacePalette (mysurface, mypalette);
   SDL_SetPaletteColors (mypalette, cl, 0, 16);
   // SDL_BlitScaled seems not working with 8bit depth surface so
   // create another 32bit depth surface and copy twice to blit :-)
-  mysurface2 = SDL_CreateRGBSurface (0, 640, 200, 32, 0, 0, 0, 0);
+  mysurface2 = SDL_CreateRGBSurface (0, SURFACE_WIDTH, SURFACE_HEIGHT, 32, 0,
+				     0, 0, 0);
+}
+
+static void
+set_rect (int &srcstart, int &srcsize, int &dststart, int &dstsize, int start,
+	  int minsize, int border)
+{
+  srcstart = 0;
+  dststart = 0;
+  if (srcsize <= dstsize)	// Window is larger than buffer
+    {
+      // Draw buffer at center of the window
+      dststart = (dstsize - srcsize) / 2;
+      dstsize = srcsize;
+    }
+  else if (srcsize > dstsize)	// Window is smaller than buffer
+    {
+      // Auto adjust the display position
+      if (dstsize < start + minsize + border)
+	srcstart = start + minsize + border - dstsize;
+      if (srcstart > start - border)
+	srcstart = start + (minsize - dstsize) / 2;
+      if (srcstart < 0)
+	srcstart = 0;
+      if (srcstart + dstsize > srcsize)
+	srcstart = srcsize - dstsize;
+      srcsize = dstsize;
+    }
 }
 
 void
 jvideo::draw ()
 {
-  SDL_BlitSurface (mysurface, NULL, mysurface2, NULL);
-  SDL_BlitScaled (mysurface2, NULL, surface, NULL);
+  SDL_Surface *surface = SDL_GetWindowSurface (window);
+  SDL_Rect dstrect;
+  dstrect.w = surface->w;
+  dstrect.h = surface->h;
+  if (dstrect.w == SURFACE_WIDTH && dstrect.h == SURFACE_HEIGHT * 2)
+    {
+      SDL_BlitSurface (mysurface, NULL, mysurface2, NULL);
+      SDL_BlitScaled (mysurface2, NULL, surface, NULL);
+    }
+  else
+    {
+      SDL_Rect srcrect;
+      srcrect.w = SURFACE_WIDTH;
+      srcrect.h = SURFACE_HEIGHT * 2;
+      set_rect (srcrect.x, srcrect.w, dstrect.x, dstrect.w, disp_start_x,
+		640, 16);
+      set_rect (srcrect.y, srcrect.h, dstrect.y, dstrect.h, disp_start_y * 2,
+		400, 32);
+      srcrect.y /= 2;
+      srcrect.h /= 2;
+      SDL_BlitSurface (mysurface, &srcrect, mysurface2, &srcrect);
+      SDL_BlitScaled (mysurface2, &srcrect, surface, &dstrect);
+    }
   SDL_UpdateWindowSurface (window);
 }
 
