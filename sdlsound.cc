@@ -168,87 +168,116 @@ sdlsound::iowrite (unsigned char data)
 }
 
 void
+sdlsound::tick_pit ()
+{
+  bool out00 = pit.getout (0);
+  pit.tick (0);
+  bool out01 = pit.getout (0);
+  if (!out00 && out01)
+    trigger_irq8259 (0);
+  else if (out00 && !out01)
+    untrigger_irq8259 (0);
+  if (!timer1sel || (!out00 && out01))
+    pit.tick (1);
+  pit.tick (2);
+  if ((pb & 0x2) == 0 || !pit.getout (2)) // !PB1 || !Timer2output
+    {
+      outbeep0++;
+      internalbeep0++;
+    }
+  else
+    {
+      outbeep1++;
+      if ((pb & 0x10) != 0) // PB4
+	internalbeep0++;
+      else
+	internalbeep1++;
+    }
+}
+
+void
+sdlsound::tick_sound ()
+{
+  sn76489a.tick ();
+}
+
+void
+sdlsound::tick_genaudio ()
+{
+  int soundtmp = sn76489a.getdata ();
+  int speakerin = 8192 * internalbeep1 / (internalbeep0 + internalbeep1);
+  int speakerout;
+  switch (pb & 0x60)	// PB5 and PB6
+    {
+    default:		// Make compiler happy
+    case 0x00:		// Timer 2 output
+      speakerout = 8192 * outbeep1 / (outbeep0 + outbeep1);
+      break;
+    case 0x20:		// Cassette tape audio
+    case 0x40:		// I/O channel audio
+      speakerout = 0;
+      break;
+    case 0x60:		// Sound generator output
+      speakerout = soundtmp - 8192;
+      break;
+    }
+  localbuf[filloffset] = speakerin + speakerout;
+  outbeep0 = 0;
+  outbeep1 = 0;
+  internalbeep0 = 0;
+  internalbeep1 = 0;
+  if (filloffset + 1 >= buffersize)
+    filloffset = 0;
+  else
+    filloffset++;
+  SDL_LockAudio ();
+  fillsize++;
+  bool bufferfull = (fillsize == buffersize) ? true : false;
+  SDL_UnlockAudio ();
+  if (bufferfull)
+    SDL_SemWait (semaphore);
+}
+
+void
 sdlsound::clk (int clockcount)
 {
-  int i;
-  bool out00, out01;
-  int speakerin, speakerout, soundtmp;
-  bool bufferfull;
-
-  for (i = 0; i < clockcount; i++)
+  // Use a simple fast loop for each counter until generating audio to
+  // improve performance
+  int n = (14318180 - 1 - clksum) / rate;
+  if (n > clockcount)
+    n = clockcount;
+  int t = (timerclk + n) / 12;
+  timerclk = (timerclk + n) % 12;
+  for (int i = 0; i < t; i++)
+    tick_pit ();
+  t = (soundclk + n) / 4;
+  soundclk = (soundclk + n) % 4;
+  for (int i = 0; i < t; i++)
+    tick_sound ();
+  clksum += rate * n;
+  // Slow loop...
+  for (int i = n; i < clockcount; i++)
     {
       // PIT CLK input: 14.31818MHz / 12 = 1.193182 MHz
       timerclk++;
       if (timerclk >= 12)
 	{
 	  timerclk -= 12;
-	  out00 = pit.getout (0);
-	  pit.tick (0);
-	  out01 = pit.getout (0);
-	  if (!out00 && out01)
-	    trigger_irq8259 (0);
-	  else if (out00 && !out01)
-	    untrigger_irq8259 (0);
-	  if (!timer1sel || (!out00 && out01))
-	    pit.tick (1);
-	  pit.tick (2);
-	  if ((pb & 0x2) == 0 || !pit.getout (2)) // !PB1 || !Timer2output
-	    {
-	      outbeep0++;
-	      internalbeep0++;
-	    }
-	  else
-	    {
-	      outbeep1++;
-	      if ((pb & 0x10) != 0) // PB4
-		internalbeep0++;
-	      else
-		internalbeep1++;
-	    }
+	  tick_pit ();
 	}
       // SN76489 CLK input: 14.31818MHz / 4 = 3.579545MHz
       soundclk++;
       if (soundclk >= 4)
 	{
 	  soundclk -= 4;
-	  sn76489a.tick ();
+	  tick_sound ();
 	}
       // Generating audio data: rate = 14.31818MHz * (rate / 14.31818MHz)
       clksum += rate;
       if (clksum >= 14318180)
 	{
 	  clksum -= 14318180;
-	  soundtmp = sn76489a.getdata ();
-	  speakerin = 8192 * internalbeep1 / (internalbeep0 + internalbeep1);
-	  switch (pb & 0x60)	// PB5 and PB6
-	    {
-	    default:		// Make compiler happy
-	    case 0x00:		// Timer 2 output
-	      speakerout = 8192 * outbeep1 / (outbeep0 + outbeep1);
-	      break;
-	    case 0x20:		// Cassette tape audio
-	    case 0x40:		// I/O channel audio
-	      speakerout = 0;
-	      break;
-	    case 0x60:		// Sound generator output
-	      speakerout = soundtmp - 8192;
-	      break;
-	    }
-	  localbuf[filloffset] = speakerin + speakerout;
-	  outbeep0 = 0;
-	  outbeep1 = 0;
-	  internalbeep0 = 0;
-	  internalbeep1 = 0;
-	  if (filloffset + 1 >= buffersize)
-	    filloffset = 0;
-	  else
-	    filloffset++;
-	  SDL_LockAudio ();
-	  fillsize++;
-	  bufferfull = (fillsize == buffersize) ? true : false;
-	  SDL_UnlockAudio ();
-	  if (bufferfull)
-	    SDL_SemWait (semaphore);
+	  tick_genaudio ();
 	}
     }
   if (fillsize > buffersize / 2)

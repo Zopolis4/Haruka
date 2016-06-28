@@ -92,6 +92,9 @@ private:
   unsigned int soundclk;
   SDL_sem *semaphore;
   bool hurry;
+  void tick_pit ();
+  void tick_sound ();
+  void tick_genaudio ();
 public:
   void audiocallback (unsigned char *stream, int len);
   void iowrite (unsigned char data);
