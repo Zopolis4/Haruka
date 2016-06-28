@@ -984,7 +984,8 @@ jvideo::j46505::get_hsync ()
 bool
 jvideo::j46505::get_vsync ()
 {
-  if (iy >= reg[VSYNCPOS] && iy - reg[VSYNCPOS] < 1)
+  if (iy >= reg[VSYNCPOS] &&
+      (iy - reg[VSYNCPOS]) * (reg[MAXSCANLINE] + 1) + ira < 16)
     return true;
   else
     return false;
@@ -998,7 +999,7 @@ jvideo::j46505::tick ()
     {
       ix = 0;
       ira++;
-      if (ira > reg[MAXSCANLINE])
+      if (iy <= reg[VTOTAL] && ira > reg[MAXSCANLINE])
 	{
 	  ira = 0;
 	  iy++;
