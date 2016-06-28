@@ -28,6 +28,7 @@ private:
     unsigned int reg[NREG];
     unsigned int ix, iy, ira;
     unsigned int cur_addr;
+    unsigned int framecount;
     void set_reg (unsigned int idx, unsigned int val);
     unsigned int get_reg (unsigned int idx);
   public:
@@ -36,7 +37,7 @@ private:
     bool get_disp ();
     bool get_hsync ();
     bool get_vsync ();
-    bool get_cursor ();
+    bool get_cursor (bool force_blink);
     unsigned int get_ma ();
     unsigned int get_ra ();
     unsigned int inb (unsigned int addr);

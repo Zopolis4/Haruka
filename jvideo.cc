@@ -932,16 +932,35 @@ jvideo::j46505::get_ra ()
 }
 
 bool
-jvideo::j46505::get_cursor ()
+jvideo::j46505::get_cursor (bool force_blink)
 {
   if (!get_disp ())
     return false;
   if (get_ma () != (reg[CURLOCLOW] | reg[CURLOCHIGH] << 8))
     return false;
-  if (ira >= reg[CURSTART] && ira <= reg[CUREND])
-    return true;
-  else
-    return false;
+  if (ira >= (reg[CURSTART] & 0x1f) && ira <= reg[CUREND])
+    {
+      switch (reg[CURSTART] & 0x60)
+	{
+	case 0x20:			// Non-display
+	  return false;
+	case 0x00:			// Non-blink
+	  if (!force_blink)
+	    return true;
+	  // Fall through
+	case 0x40:			// Blink, 1/16 field rate
+	  if ((framecount & 0xf) <= 0x7)
+	    return true;
+	  else
+	    return false;
+	case 0x80:			// Blink, 1/32 field rate
+	  if ((framecount & 0x1f) <= 0xf)
+	    return true;
+	  else
+	    return false;
+	}
+    }
+  return false;
 }
 
 bool
@@ -988,6 +1007,7 @@ jvideo::j46505::tick ()
 	{
 	  ira = 0;
 	  iy = 0;
+	  framecount++;
 	}
     }
 }
