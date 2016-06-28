@@ -86,7 +86,6 @@ Run 5511emu.
 * Floppy disk images cannot be changed while the emulator is running.
 * Extended (Kakucho-hyoji) mode is not supported.
 * JX-5 7.2MHz mode is not supported.
-* Border color is not displayed.
 * There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
 * Superfast and quiet diskette drives.
 * CG1 (Character Generator 1) uses CG2 fonts, because CG1 ROM is not readable from CPU and ROM reader is needed to create CG1 ROM image file.
