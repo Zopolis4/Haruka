@@ -3188,17 +3188,17 @@ run8088 (void)
 	case 0xe2: tmp = getimm12 (); E_LOOPc (tmp); br;
 	case 0xe3: tmp = getimm12 (); E_JCXZc (tmp); br;
 	case 0xe4: letreg1 (0, in (getimm1 ())); ca (10); br; /* IN AL,imm8 */
-	case 0xe5: tmp=getimm1();letreg1(4,in(tmp+1));letreg1(0,in(tmp));ca(10);br; /* IN AX,imm8 */
+	case 0xe5: tmp=getimm1();letreg1(0,in(tmp));letreg1(4,in(tmp+1));ca(10);br; /* IN AX,imm8 */
 	case 0xe6: out (getimm1 (), reg1 (0)); ca (10); br; /* OUT imm8,AL */
-	case 0xe7: tmp=getimm1();out(tmp+1,reg1(4));out(tmp,reg1(0));ca(10);br; /* OUT imm8,AX */
+	case 0xe7: tmp=getimm1();out(tmp,reg1(0));out(tmp+1,reg1(4));ca(10);br; /* OUT imm8,AX */
 	case 0xe8: tmp = getimm2 (); E_PUSH (ip); jmpn (tmp); ca (19); br; /* CALLN */
 	case 0xe9: tmp = getimm2 (); jmpn (tmp); ca (15); br; /* JMPN */
 	case 0xea: tmp = getimm2 (); tmp2 = getimm2 (); jmpf (tmp2, tmp); ca (15); br; /* JMPF */
 	case 0xeb: tmp = getimm12 (); jmpn (tmp); ca (15); br; /* JMPS */
 	case 0xec: letreg1 (0, in (reg2 (2))); ca (8); br; /* IN AL,DX */
-	case 0xed: tmp=reg2(2);letreg1(4,in(tmp+1));letreg1(0,in(tmp));ca(8);br; /* IN AX,DX */
+	case 0xed: tmp=reg2(2);letreg1(0,in(tmp));letreg1(4,in(tmp+1));ca(8);br; /* IN AX,DX */
 	case 0xee: out (reg2 (2), reg1 (0)); ca (8); br; /* OUT DX,AL */
-	case 0xef: tmp=reg2(2);out(tmp+1,reg1(4));out(tmp,reg1(0));ca(8);br; /* OUT DX,AX */
+	case 0xef: tmp=reg2(2);out(tmp,reg1(0));out(tmp+1,reg1(4));ca(8);br; /* OUT DX,AX */
 	case 0xf0: E_LOCK (); ca(2); br;
 	case 0xf2: E_REPEc (); br;
 	case 0xf3: E_REPNEc (); br;
