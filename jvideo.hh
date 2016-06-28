@@ -43,7 +43,7 @@ private:
     unsigned int inb (unsigned int addr);
     void outb (unsigned int addr, unsigned int val);
   };
-  j46505 crtc, crtc2;
+  j46505 crtc;
   int flag3da[2];
   jmem &program;		// Programmable RAM
   jmem vram;			// 32KB VRAM + 32KB VRAM
@@ -55,7 +55,7 @@ private:
   unsigned char v3da;
   int pagereg[2];
   void conv ();
-  int convsub (unsigned char *p, int vp);
+  int convsub (unsigned char *p);
   int index3d4;
   int hsynccount;
 protected:
@@ -93,7 +93,6 @@ public:
 private:
   SDL_Window *window;
   SDL_Surface *surface;
-  SDL_Color pal[256];
   SDL_Surface *mysurface;
   SDL_Surface *mysurface2;
   SDL_Palette *mypalette;

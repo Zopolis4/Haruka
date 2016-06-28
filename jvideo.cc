@@ -121,7 +121,7 @@ jvideo::out3da (bool vp2, unsigned char data)
       palettemask[vp] = data;
       break;
     case 2:
-      bordercolor = data;
+      bordercolor = data & 0xf;
       break;
     case 3:
       mode2[vp] = data;
@@ -277,20 +277,20 @@ draw_ma (unsigned char *p, int vp, unsigned int ma, unsigned int ra,
 	  if (mode1 & 1)
 	    {
 	      draw2 (&p, d1 >> 4);
-	      draw2 (&p, d1);
+	      draw2 (&p, d1 & 0xf);
 	      draw2 (&p, d2 >> 4);
-	      draw2 (&p, d2);
+	      draw2 (&p, d2 & 0xf);
 	    }
 	  else
 	    {
 	      draw2 (&p, d1 >> 4);
 	      draw2 (&p, d1 >> 4);
-	      draw2 (&p, d1);
-	      draw2 (&p, d1);
+	      draw2 (&p, d1 & 0xf);
+	      draw2 (&p, d1 & 0xf);
 	      draw2 (&p, d2 >> 4);
 	      draw2 (&p, d2 >> 4);
-	      draw2 (&p, d2);
-	      draw2 (&p, d2);
+	      draw2 (&p, d2 & 0xf);
+	      draw2 (&p, d2 & 0xf);
 	    }
 	  break;
 	}
@@ -299,58 +299,121 @@ draw_ma (unsigned char *p, int vp, unsigned int ma, unsigned int ra,
 }
 
 int
-jvideo::convsub (unsigned char *p, int vp)
+jvideo::convsub (unsigned char *p)
 {
-  int readtop;
-
-  jmem &readmem = vp ? vram : program;
-  readtop = vp ? (pagereg[1] & 3) * 16384 : (pagereg[0] & 7) * 16384;
-  if (!(mode1[vp] & 8))
-    return 2;
-  j46505 &crtc_ = vp ? crtc2 : crtc;
-  j46505 &crtc = crtc_;
+  int readtop1 = (pagereg[0] & 7) * 16384;
+  int readtop2 = (pagereg[1] & 3) * 16384;
+  int enable1 = mode1[0] & 8;
+  int enable2 = mode1[1] & 8;
+  int si = superimpose & 0xf;
   unsigned int draw_addr = 0;
   // Manage graphic screen address itself instead of using CRTC output
   // directly to support superimpose with VP2 text screen
-  unsigned int gma0 = crtc.get_ma ();
-  unsigned int gma = gma0;
-  unsigned int gra = 0;
+  unsigned int gma10 = crtc.get_ma ();
+  unsigned int gma20 = crtc.get_ma ();
+  unsigned int gma1 = gma10;
+  unsigned int gma2 = gma20;
+  unsigned int gra1 = 0;
+  unsigned int gra2 = 0;
   while (!crtc.get_vsync () && draw_addr < 640 * 200)
     {
-      unsigned char buf[16];
-      int len = draw_ma (buf, vp, crtc.get_ma (), crtc.get_ra (), gma, gra,
-			 crtc.get_cursor (true), readmem, kanjirom, readtop,
-			 mode1[vp], mode2[vp], blinkcount) - buf;
-      if (vp)
-	memcpy (&p[draw_addr], buf, len);
-      else
-	for (int i = 0; i < len; i++)
-	  p[draw_addr + i] = (p[draw_addr + i] & 0xf) | (buf[i] << 4);
+      unsigned char buf1[16], buf2[16];
+      int len1 = 0, len2 = 0, len;
+      if (enable1)
+	len1 = draw_ma (buf1, 0, crtc.get_ma (), crtc.get_ra (), gma1, gra1,
+			crtc.get_cursor (true), program, kanjirom, readtop1,
+			mode1[0], mode2[0], blinkcount) - buf1;
+      if (enable2)
+	len2 = draw_ma (buf2, 1, crtc.get_ma (), crtc.get_ra (), gma2, gra2,
+			crtc.get_cursor (true), vram, kanjirom, readtop2,
+			mode1[1], mode2[1], blinkcount) - buf2;
+      len = len1;
+      if (len1 < len2)
+	len = len2;
+      if (si & 0xe)
+	{
+	  if (len1 < len2)
+	    memset (&buf1[len1], 0, len2 - len1);
+	  else if (len1 > len2)
+	    memset (&buf2[len2], 0, len1 - len2);
+	}
+      switch (si)
+	{
+	case 0x0:
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf1[i]];
+	  break;
+	case 0x1:
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf2[i]];
+	  break;
+	case 0x2:
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf1[i] == transpalette ?
+				       buf2[i] : buf1[i]];
+	  break;
+	case 0x3:		// FIXME: Is this correct?
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf1[i] != transpalette ?
+				       buf2[i] : buf1[i]];
+	  break;
+	case 0x6:
+	  if (mode1[1] & 0x80)
+	    {
+	      for (int i = 0; i < len; i++)
+		p[draw_addr + i] = palette[(buf1[i] | (buf2[i] << 2))];
+	      break;
+	    }
+	  // Fall through
+	case 0x4:
+	case 0x5:
+	case 0x7:
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf1[i] ^ buf2[i]];
+	  break;
+	case 0x8:
+	case 0x9:
+	case 0xa:
+	case 0xb:
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf1[i] & buf2[i]];
+	  break;
+	case 0xc:
+	case 0xd:
+	case 0xe:
+	case 0xf:
+	  for (int i = 0; i < len; i++)
+	    p[draw_addr + i] = palette[buf1[i] | buf2[i]];
+	  break;
+	}
       draw_addr += len;
       crtc.tick ();
-      gma++;
+      gma1++;
+      gma2++;
       if (!crtc.get_disp ())
 	{
-	  gra++;
-	  if (gra == (mode1[vp] & 1 ? 4 : 2))
+	  gra1++;
+	  gra2++;
+	  if (gra1 == (mode1[0] & 1 ? 4 : 2))
 	    {
-	      gma0 = gma;
-	      gra = 0;
+	      gma10 = gma1;
+	      gra1 = 0;
 	    }
 	  else
-	    gma = gma0;
+	    gma1 = gma10;
+	  if (gra2 == (mode1[1] & 1 ? 4 : 2))
+	    {
+	      gma20 = gma2;
+	      gra2 = 0;
+	    }
+	  else
+	    gma2 = gma20;
 	}
       while (!crtc.get_vsync () && (crtc.get_hsync () || !crtc.get_disp ()))
 	crtc.tick ();
     }
   while (draw_addr < 640 * 200)
-    {
-      if (vp)
-	p[draw_addr] = bordercolor;
-      else
-	p[draw_addr] = (p[draw_addr] & 0xf) | (bordercolor << 4);
-      draw_addr++;
-    }
+    p[draw_addr++] = bordercolor;
   while (!crtc.get_vsync ())
     crtc.tick ();
   while (crtc.get_vsync ())
@@ -363,20 +426,7 @@ jvideo::convsub (unsigned char *p, int vp)
 void
 jvideo::conv ()
 {
-  int i;
-  int r1, r2;
-
-  r1 = r2 = 0;
-  if ((superimpose & 15) != 0)
-    r2 = convsub (drawdata, 1);
-  if ((superimpose & 15) != 1)
-    r1 = convsub (drawdata, 0);
-  if (r1 == 2 || r2 == 2)
-    {
-      for (i = 0 ; i < 640 * 200 ; i++)
-	drawdata[i] = bordercolor;
-      return;
-    }
+  convsub (drawdata);
 }
 
 void
@@ -388,6 +438,24 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
 		jmem &kanjirom_arg) throw (char *)
   : program (program_arg), vram (65536), kanjirom (kanjirom_arg)
 {
+  static SDL_Color cl[16]={
+    {r:0x00,g:0x00,b:0x00},
+    {r:0x00,g:0x00,b:0xdd},
+    {r:0x00,g:0xdd,b:0x00},
+    {r:0x00,g:0xdd,b:0xdd},
+    {r:0xdd,g:0x00,b:0x00},
+    {r:0xdd,g:0x00,b:0xdd},
+    {r:0xdd,g:0xdd,b:0x00},
+    {r:0xdd,g:0xdd,b:0xdd},
+    {r:0x88,g:0x88,b:0x88},
+    {r:0x88,g:0x88,b:0xff},
+    {r:0x88,g:0xff,b:0x88},
+    {r:0x88,g:0xff,b:0xff},
+    {r:0xff,g:0x88,b:0x88},
+    {r:0xff,g:0x88,b:0xff},
+    {r:0xff,g:0xff,b:0x88},
+    {r:0xff,g:0xff,b:0xff},
+  };
   int i;
 
   drawdata = new unsigned char[640 * 200];
@@ -411,6 +479,7 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
   mypalette = SDL_AllocPalette (256);
   mysurface = SDL_CreateRGBSurface (0, 640, 200, 8, 0, 0, 0, 0);
   SDL_SetSurfacePalette (mysurface, mypalette);
+  SDL_SetPaletteColors (mypalette, cl, 0, 16);
   // SDL_BlitScaled seems not working with 8bit depth surface so
   // create another 32bit depth surface and copy twice to blit :-)
   mysurface2 = SDL_CreateRGBSurface (0, 640, 200, 32, 0, 0, 0, 0);
@@ -421,81 +490,7 @@ jvideo::draw ()
 {
   unsigned char *q;
   int i;
-  static SDL_Color cl[16]={
-    {r:0x00,g:0x00,b:0x00},
-    {r:0x00,g:0x00,b:0xdd},
-    {r:0x00,g:0xdd,b:0x00},
-    {r:0x00,g:0xdd,b:0xdd},
-    {r:0xdd,g:0x00,b:0x00},
-    {r:0xdd,g:0x00,b:0xdd},
-    {r:0xdd,g:0xdd,b:0x00},
-    {r:0xdd,g:0xdd,b:0xdd},
-    {r:0x88,g:0x88,b:0x88},
-    {r:0x88,g:0x88,b:0xff},
-    {r:0x88,g:0xff,b:0x88},
-    {r:0x88,g:0xff,b:0xff},
-    {r:0xff,g:0x88,b:0x88},
-    {r:0xff,g:0x88,b:0xff},
-    {r:0xff,g:0xff,b:0x88},
-    {r:0xff,g:0xff,b:0xff},
-  };
-
   q = drawdata;
-  if ((superimpose & 12) == 0)
-    {
-      switch (superimpose & 3)
-	{
-	case 0:
-	  for (i = 0 ; i < 256 ; i++)
-	    pal[i] = cl[palette[i / 16]];
-	  break;
-	case 1:
-	  for (i = 0 ; i < 256 ; i++)
-	    pal[i] = cl[palette[i % 16]];
-	  break;
-	case 2:
-	  for (i = 0 ; i < 256 ; i++)
-	    {
-	      if (i / 16 == transpalette)
-		pal[i] = cl[palette[i % 16]];
-	      else
-		pal[i] = cl[palette[i / 16]];
-	    }
-	  break;
-	case 3:			// ???
-	  for (i = 0 ; i < 256 ; i++)
-	    {
-	      if (i / 16 != transpalette)
-		pal[i] = cl[palette[i % 16]];
-	      else
-		pal[i] = cl[palette[i / 16]];
-	    }
-	  break;
-	}
-    }
-  else
-    {
-      switch (superimpose & 12)
-	{
-	case 12:
-	  for (i = 0 ; i < 256 ; i++)
-	    pal[i] = cl[palette[(i / 16) | (i % 16)]];
-	  break;
-	case 8:
-	  for (i = 0 ; i < 256 ; i++)
-	    pal[i] = cl[palette[(i / 16) & (i % 16)]];
-	  break;
-	case 4:
-	  if ((superimpose & 15) == 6 && (mode1[1] & 128))
-	    for (i = 0 ; i < 256 ; i++)
-	      pal[i] = cl[palette[((i / 16) | ((i % 16) * 4)) ^ 10]];
-	  else
-	    for (i = 0 ; i < 256 ; i++)
-	      pal[i] = cl[palette[(i / 16) ^ (i % 16)]];
-	  break;
-	}
-    }
-  SDL_SetPaletteColors (mypalette, pal, 0, 256);
   if (SDL_MUSTLOCK (mysurface))
     {
       if (SDL_LockSurface (mysurface) < 0)
@@ -791,7 +786,6 @@ void
 jvideo::out3d4 (unsigned char data)
 {
   crtc.outb (0, data);
-  crtc2.outb (0, data);
 }
 
 unsigned char
@@ -804,5 +798,4 @@ void
 jvideo::out3d5 (unsigned char data)
 {
   crtc.outb (1, data);
-  crtc2.outb (1, data);
 }
