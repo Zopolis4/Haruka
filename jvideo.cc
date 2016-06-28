@@ -37,14 +37,6 @@ jvideo::~jvideo ()
   SDL_FreeSurface (mysurface);
   SDL_FreePalette (mypalette);
   delete[] drawdata;
-  delete[] drawdata1;
-  delete[] drawdata2;
-}
-
-unsigned char
-jvideo::read2 (int offset)
-{
-  return vram.read ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535);
 }
 
 void
@@ -103,55 +95,6 @@ jvideo::clk (int clockcount, bool drawflag)
 	    dat3da &= ~1;
 	}
     }
-#if 0
-  if (vsynccount >= (14318180 / 60))
-    {
-      vsynccount -= 14318180 / 60;
-      dat3da &= 1^255;
-      dat3da |= 8;
-      vsyncintflag = 1, trigger_irq8259 (5);
-      if (drawflag)
-	{
-	  conv ();
-	  draw ();
-	}
-    }
-  if (vsyncintflag)
-    {
-#if 0
-      if (vsynccount > 500)
-	{
-	  vsyncintflag = 0;
-	  hsynccount = 0;
-	  dat3da &= 9^255;
-	  /* intclass->intcallor (32); */
-	  trigger_irq8259 (5);
-	}
-#endif
-      if (vsynccount > 500 && vsyncintflag == 1)
-	{
-	  vsyncintflag = 2;
-	  /* intclass->intcallor (32); */
-	  untrigger_irq8259 (5);
-	}
-      if (vsynccount > 1000 && vsyncintflag == 2)
-	{
-	  vsyncintflag = 0;
-	  hsynccount = 0;
-	  dat3da &= 9^255;
-	}
-    }
-  if (!(dat3da & 1))
-    if (vsynccount > (long long)((hsynccount + 1) * 14318180LL / 60 / 201))
-      dat3da |= 1;
-  if (dat3da & 1)
-    if (vsynccount >
-	(long long)((hsynccount + 1) * 14318180LL / 60 / 201 + 600))
-      {
-	dat3da &= 1^255;
-	hsynccount++;
-      }
-#endif
 }
 
 void
@@ -203,10 +146,8 @@ jvideo::convsub (unsigned char *p, int vp)
 {
   int maskdat;
   int readtop;
-  bool fillbottom;
   unsigned char ctmp;
 
-  fillbottom = false;
   jmem &readmem = vmem (vp);
   maskdat = vmask (vp);
   readtop = vtop (vp);
@@ -225,7 +166,6 @@ jvideo::convsub (unsigned char *p, int vp)
 	{
 	  int i, j, k, l, bg, fg, d1, d2, addr, m, n, drawaddr, d, e, d3;
 
-	  fillbottom = true;
 	  k = readtop;
 	  l = x80 ? 80 : 40;
 	  for (i = 0 ; i < 11 ; i++)
@@ -643,7 +583,7 @@ jvideo::convsub (unsigned char *p, int vp)
 	    }
 	}
     }
-  return fillbottom ? 1 : 0;
+  return 0;
 }
 
 void
@@ -651,18 +591,6 @@ jvideo::conv ()
 {
   int i;
   int r1, r2;
-
-  //mode1[0] = mode1[1] = 0x13;
-  //mode2[0] = mode2[1] = 0;
-  //mode1[1] = 0x13;
-  //mode2[1] = 0;
-  //superimpose = 1;
-  //pagereg[0] = pagereg[1] = 0;
-  //pagereg[0] = 0x36;
-#if 0
-  for (i = 0 ; i < 16 ; i++)
-    palette[i] = i;
-#endif
 
   r1 = r2 = 0;
   if ((superimpose & 15) != 0)
@@ -675,70 +603,6 @@ jvideo::conv ()
 	drawdata[i] = bordercolor;
       return;
     }
-#if 0
-  if ((superimpose & 12) == 0)
-    {
-      switch (superimpose & 3)
-	{
-	case 0:
-	  for (i = 0 ; i < 640 * 200 ; i++)
-	    drawdata[i] = palette[drawdata1[i]];
-	  break;
-	case 1:
-	  for (i = 0 ; i < 640 * 200 ; i++)
-	    drawdata[i] = palette[drawdata2[i]];
-	  break;
-	case 2:
-	  j = transpalette;
-	  for (i = 0 ; i < 640 * 200 ; i++)
-	    {
-	      d = drawdata1[i];
-	      if (d == j)
-		d = drawdata2[i];
-	      drawdata[i] = palette[d];
-	    }
-	  break;
-	case 3:			// ???
-	  j = transpalette;
-	  for (i = 0 ; i < 640 * 200 ; i++)
-	    {
-	      d = drawdata1[i];
-	      if (d != j)
-		d = drawdata2[i];
-	      drawdata[i] = palette[d];
-	    }
-	  break;
-	}
-    }
-  else
-    {
-      switch (superimpose & 12)
-	{
-	case 12:
-	  for (i = 0 ; i < 640 * 200 ; i++)
-	    drawdata[i] = palette[drawdata1[i] | drawdata2[i]];
-	  break;
-	case 8:
-	  for (i = 0 ; i < 640 * 200 ; i++)
-	    drawdata[i] = palette[drawdata1[i] & drawdata2[i]];
-	  break;
-	case 4:
-	  if ((superimpose & 15) == 6 && (mode1[1] & 128)) // SUPER 16 COLOR
-	    for (i = 0 ; i < 640 * 200 ; i++)
-	      drawdata[i] = palette[(drawdata1[i] | (drawdata2[i] * 4)) ^ 10];
-	  else
-	    for (i = 0 ; i < 640 * 200 ; i++)
-	      drawdata[i] = palette[drawdata1[i] ^ drawdata2[i]];
-	  break;
-	}
-    }
-  if (r2 == 1)
-    {
-      for (i = 0 ; i < 640 * 2 ; i++)
-	drawdata[640 * 198 + i] = bordercolor;
-    }
-#endif
-  fillbottom = (r2 == 1);
 }
 
 void
@@ -753,8 +617,6 @@ jvideo::jvideo (SDL_Window *window, SDL_Surface *surface, jmem &program_arg,
   int i;
 
   drawdata = new unsigned char[640 * 200];
-  drawdata1 = new unsigned char[640 * 200];
-  drawdata2 = new unsigned char[640 * 200];
   vsynccount = 0;
   cursorcount = 0;
   blinkcount = 0;
@@ -810,26 +672,14 @@ jvideo::draw ()
       switch (superimpose & 3)
 	{
 	case 0:
-	  //for (i = 0 ; i < 640 * 200 ; i++)
-	  //  drawdata[i] = palette[drawdata1[i]];
 	  for (i = 0 ; i < 256 ; i++)
 	    pal[i] = cl[palette[i / 16]];
 	  break;
 	case 1:
-	  //for (i = 0 ; i < 640 * 200 ; i++)
-	  //  drawdata[i] = palette[drawdata2[i]];
 	  for (i = 0 ; i < 256 ; i++)
 	    pal[i] = cl[palette[i % 16]];
 	  break;
 	case 2:
-	  //j = transpalette;
-	  //for (i = 0 ; i < 640 * 200 ; i++)
-	  //  {
-	  //    d = drawdata1[i];
-	  //    if (d == j)
-	  //	  d = drawdata2[i];
-	  //    drawdata[i] = palette[d];
-	  //  }
 	  for (i = 0 ; i < 256 ; i++)
 	    {
 	      if (i / 16 == transpalette)
@@ -839,14 +689,6 @@ jvideo::draw ()
 	    }
 	  break;
 	case 3:			// ???
-	  //j = transpalette;
-	  //for (i = 0 ; i < 640 * 200 ; i++)
-	  //  {
-	  //    d = drawdata1[i];
-	  //    if (d != j)
-	  //	  d = drawdata2[i];
-	  //    drawdata[i] = palette[d];
-	  //  }
 	  for (i = 0 ; i < 256 ; i++)
 	    {
 	      if (i / 16 != transpalette)
@@ -862,24 +704,14 @@ jvideo::draw ()
       switch (superimpose & 12)
 	{
 	case 12:
-	  //for (i = 0 ; i < 640 * 200 ; i++)
-	  //  drawdata[i] = palette[drawdata1[i] | drawdata2[i]];
 	  for (i = 0 ; i < 256 ; i++)
 	    pal[i] = cl[palette[(i / 16) | (i % 16)]];
 	  break;
 	case 8:
-	  //for (i = 0 ; i < 640 * 200 ; i++)
-	  //  drawdata[i] = palette[drawdata1[i] & drawdata2[i]];
 	  for (i = 0 ; i < 256 ; i++)
 	    pal[i] = cl[palette[(i / 16) & (i % 16)]];
 	  break;
 	case 4:
-	  //if ((superimpose & 15) == 6 && (mode1[1] & 128)) // SUPER 16 COLOR
-	  //  for (i = 0 ; i < 640 * 200 ; i++)
-	  //    drawdata[i] = palette[(drawdata1[i] | (drawdata2[i] * 4)) ^ 10];
-	  //else
-	  //  for (i = 0 ; i < 640 * 200 ; i++)
-	  //    drawdata[i] = palette[drawdata1[i] ^ drawdata2[i]];
 	  if ((superimpose & 15) == 6 && (mode1[1] & 128))
 	    for (i = 0 ; i < 256 ; i++)
 	      pal[i] = cl[palette[((i / 16) | ((i % 16) * 4)) ^ 10]];
@@ -889,8 +721,6 @@ jvideo::draw ()
 	  break;
 	}
     }
-  //for (i = 0 ; i < 256 ; i++)
-  //  pal[i] = cl[palette[15]];
   SDL_SetPaletteColors (mypalette, pal, 0, 256);
   if (SDL_MUSTLOCK (mysurface))
     {

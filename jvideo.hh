@@ -55,8 +55,6 @@ private:
   void conv ();
   int convsub (unsigned char *p, int vp);
   int index3d4;
-  unsigned char *drawdata1;
-  unsigned char *drawdata2;
   int hsynccount;
   int vtop (int vp2)
   {
@@ -86,7 +84,6 @@ protected:
   int bordercolor;
   int reset, transpalette, superimpose;
   unsigned char palette[16];
-  int fillbottom;
 public:
   unsigned char read (bool vp2, int offset)
   {
@@ -94,7 +91,6 @@ public:
       return vram.read ((offset + ((pagereg[1] >> 3) & 3) * 16384) & 65535);
     return program.read ((offset + ((pagereg[0] >> 3) & 7) * 16384) & 131071);
   }
-  unsigned char read2 (int offset);
   void write (bool vp2, int offset, unsigned char data)
   {
     if (vp2)
