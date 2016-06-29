@@ -26,7 +26,10 @@
 extern "C"
 {
   extern void trigger_irq8259 (unsigned int);
+  extern void untrigger_irq8259 (unsigned int);
 }
+
+static const int WATCHDOG_TIME = 14318180 * 2; // 1-3sec.
 
 jfdc::jfdc (jvideo &d) : video (d)
 {
@@ -51,6 +54,13 @@ jfdc::outf2 (t16 v)
     }
   f2 = v;
   video.floppyaccess (v);
+  if (!(v & 0x20) && watchdog == -1)
+    {
+      untrigger_irq8259 (6);
+      watchdog = 0;
+    }
+  if (v & 0x40)
+    watchdog = WATCHDOG_TIME;
 }
 
 t16
@@ -241,9 +251,11 @@ jfdc::outf5 (t16 v)
 void
 jfdc::timeout ()
 {
-  if (f2 & 32)
-    /*interrupt->intcallor (64);*/
-    trigger_irq8259 (6);
+  if (f2 & 0x20)
+    {
+      trigger_irq8259 (6);
+      watchdog = -1;
+    }
   p = "B0B1B2B3B4B5B6";
 }
 
@@ -253,3 +265,22 @@ jfdc::transfertimeout ()
   transint = true;
 }
 
+void
+jfdc::clk (int count)
+{
+  if (watchdog > 0)
+    {
+      if (watchdog > count)
+	watchdog -= count;
+      else
+	{
+	  if (f2 & 0x20)
+	    {
+	      trigger_irq8259 (6);
+	      watchdog = -1;
+	    }
+	  else
+	    watchdog = 0;
+	}
+    }
+}

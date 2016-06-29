@@ -23,6 +23,7 @@ private:
   t16 cmdcode;
   void run (char c);
   bool transint;
+  int watchdog;
 protected:
   t16 step_rate, param1, drive, cylinder, head, sector, bytes_per_sector, eot,
     gap_length, dtl, sectors_per_track, filler;
@@ -49,5 +50,5 @@ public:
   void outf4 (t16 v);
   t16 inf5 ();
   void outf5 (t16 v);
+  void clk (int count);
 };
-

@@ -743,6 +743,7 @@ sdlmainthread (void *p)
 	  bool nmiflag = md->keybd->clkin (clk2);
 	  joy.clk (clk2);
 	  soundclass.clk (clk2);
+	  fdc.clk (clk2);
 	  if (nmiflag)
 	    nmi8088 (1);
 	  clk += clk2;
