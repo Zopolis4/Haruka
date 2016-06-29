@@ -333,6 +333,32 @@ public:
   };
 };
 
+class devprnt : public jio1ffdev
+{
+  // Dummy parallel port implementation
+  unsigned int reg[4];
+public:
+  devprnt (jbus &bus, conf c) : jio1ffdev (bus, c) { }
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = reg[addr & 3];
+  }
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    switch (addr & 3)
+      {
+      case 2:			// Control
+	val &= 0x1f;
+	// Fall through
+      case 0:			// Data latch
+	reg[addr & 3] = val;
+	break;
+      }
+  }
+};
+
 class devcrtc : public jio1ffdev
 {
   jvideo &video;
@@ -576,7 +602,7 @@ sdlmainthread (void *p)
 		      joy);
       devjoyr d_joyr (bus, jio1ffdev::conf (0x87, 0200, 0000, 0100, 0000),
 		      joy);
-      jio1ffdev d_prnt (bus, jio1ffdev::conf (0x88, 0200, 0000, 0157, 0000));
+      devprnt d_prnt (bus, jio1ffdev::conf (0x88, 0200, 0000, 0157, 0000));
       jio1ffdev d_8250 (bus, jio1ffdev::conf (0x89, 0200, 0000, 0137, 0000));
       devcrtc d_crtc (bus, jio1ffdev::conf (0x8A, 0200, 0000, 0172, 0000),
 		      videoclass);
