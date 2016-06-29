@@ -226,7 +226,10 @@ public:
       val = dat8255[addr];
     else
       val = 2 | (kbd.getnmiflag () ? 1 : 0) | (kbd.getkeydata () ? 64 : 0) |
-	(sound.gettimer2out () ? 0x20 : 0);
+	// Cassette motor on if (dat8255[1] & 0x18) == 0.
+	// Bit 4 is same as bit 5 during cassette motor off.
+	// This is tested by BIOS POST.
+	(sound.gettimer2out () ? dat8255[1] & 0x18 ? 0x30 : 0x20 : 0);
   };
   void ioport_write (unsigned int addr, unsigned int val, int &cycles)
   {
