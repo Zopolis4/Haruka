@@ -161,15 +161,17 @@ class devvram12 : public jio1ffdev
 public:
   devvram12 (jbus &bus, conf c, jvideo &video, bool vp2)
     : jio1ffdev (bus, c), video (video), vp2 (vp2) { };
+  // FIXME: VRAM2 0x0000-0x7fff <-> CPU 0xb8000-0xbffff, 0xa8000-0xaffff
+  // FIXME: VRAM2 0x8000-0xffff <-> CPU 0xa0000-0xa7fff (in the ex-video card)
   void memory_read (unsigned int addr, unsigned int &val, int &cycles)
   {
     cycles = 6;
-    val = video.read (vp2, addr & 0x7fff);
+    val = video.read (vp2, vp2 ? (addr & 0xffff) ^ 0x8000 : addr & 0x7fff);
   };
   void memory_write (unsigned int addr, unsigned int val, int &cycles)
   {
     cycles = 6;
-    video.write (vp2, addr & 0x7fff, val);
+    video.write (vp2, vp2 ? (addr & 0xffff) ^ 0x8000 : addr & 0x7fff, val);
   };
 };
 
@@ -394,6 +396,24 @@ public:
   };
 };
 
+class devga03 : public jio1ffdev
+{
+  jvideo &video;
+public:
+  devga03 (jbus &bus, conf c, jvideo &video)
+    : jio1ffdev (bus, c), video (video) { };
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    val = video.in3dd ();
+  };
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    video.out3dd (val);
+  };
+};
+
 class devpg2 : public jio1ffdev
 {
   jvideo &video;
@@ -612,8 +632,8 @@ sdlmainthread (void *p)
 					     07, 02), videoclass, false);
       devga2ab d_ga2b (bus, jio1ffdev::conf (0x8D, 0200, 0000, 0173, 0000,
 					     07, 02), videoclass, true);
-      jio1ffdev d_ga03 (bus, jio1ffdev::conf (0x8E, 0200, 0000, 0173,
-					      0000, 07, 05));
+      devga03 d_ga03 (bus, jio1ffdev::conf (0x8E, 0200, 0000, 0173,
+					    0000, 07, 05), videoclass);
       jio1ffdev d_lpgt (bus, jio1ffdev::conf (0x8F, 0200, 0000, 0173,
 					      0000, 03, 02));
       devpg2 d_pg2 (bus, jio1ffdev::conf (0x90, 0200, 0000, 0173, 0000,
@@ -667,6 +687,7 @@ sdlmainthread (void *p)
 	      cartrom.clearrom ();
 	      d_1ff.set_base1_rom (false);
 	      d_1ff.set_base2_rom (false);
+	      d_1ff.set_ex_video (true);
 	      for (i = 0 ; i < 6 ; i++)
 		{
 		  if (md->cart[i])
@@ -831,6 +852,8 @@ main (int argc, char **argv)
 	md.warmflag = true;
       else if (strcmp (argv[i], "-o") == 0)
 	md.origpcjrflag = true;
+      else if (strcmp (argv[i], "-e") == 0)
+	SDL_SetWindowSize (md.window, 752, 557);
       else if (strcmp (argv[i], "-d0") == 0 && i + 1 < argc)
 	md.cart[0] = argv[++i];
       else if (strcmp (argv[i], "-d8") == 0 && i + 1 < argc)

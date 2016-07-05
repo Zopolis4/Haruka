@@ -58,18 +58,34 @@ private:
   bool gma_reset;
   unsigned int gma10;
   unsigned int gma20;
+  unsigned int gma30;
   unsigned int gma1;
   unsigned int gma2;
+  unsigned int gma3;
   unsigned int gra1;
   unsigned int gra2;
+  unsigned int gra3;
   unsigned char last_color;
   unsigned int vsynccount;
   void correct_disp_pos ();
   void convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
 		int len, unsigned char *p, bool disp);
+  void ex_convsub (int enable, int len, unsigned char *p, bool disp);
   void conv (int clockcount, bool drawflag);
+  void ex_conv (int clockcount, bool drawflag);
   void convtick (bool disp);
+  void ex_draw ();
   int index3d4;
+  bool flag3dd;
+  unsigned char v3dd;
+  unsigned char ex_reg2;
+  unsigned char ex_palette[4];
+  unsigned char ex_reg5;
+  unsigned char ex_reg6;
+  unsigned char ex_reg7;
+  unsigned int ex_convcount;
+  unsigned int ex_framecount;
+  bool ex_prev_cursor;
 protected:
   int mode1[2], palettemask[2], mode2[2];
   unsigned char *drawdata;
@@ -98,6 +114,8 @@ public:
   void out3d4 (unsigned char data);
   unsigned char in3d5 ();
   void out3d5 (unsigned char data);
+  unsigned int in3dd ();
+  void out3dd (unsigned char data);
   void clk (int clockcount, bool drawflag);
   //virtual void draw () = 0;
   bool pcjrmem () { return (mode2[1] & 16) ? true : false; }
@@ -106,6 +124,7 @@ private:
   SDL_Window *window;
   SDL_Surface *mysurface;
   SDL_Surface *mysurface2;
+  SDL_Surface *myexsurface;
   SDL_Palette *mypalette;
   unsigned long *bits;
   unsigned long *bits2;

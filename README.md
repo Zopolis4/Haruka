@@ -36,7 +36,7 @@ This program loads the following ROM image file from current working directory i
 Cartridge ROM image can be loaded with -d0, -d8, -e0, -e8, -f0 or -f8 option. The option name means starting address:
 
 * -d0 for D0000h, application
-* -d8 for D8000h, application
+* -d8 for D8000h, application, 32KiB extended video (Kakucho-hyoji) mode cartridge
 * -e0 for E0000h, application for PCjr
 * -e8 for E8000h, application for PCjr, 32KiB cartridge BASIC for PCjr
 * -f0 for F0000h, system
@@ -66,7 +66,7 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-w] [-j] [-o] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [-o] [-e] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options ###
@@ -74,6 +74,7 @@ Run 5511emu.
 * -w: warm boot
 * -j: PCjr cartridge
 * -o: Original PCjr mode
+* -e: Set window size for extended video mode
 * -d0 cartridge-d0: Load cartridge image from address D0000h
 * -d8 cartridge-d8: Load cartridge image from address D8000h
 * -e0 cartridge-e0: Load cartridge image from address E0000h
@@ -84,7 +85,6 @@ Run 5511emu.
 ## Limitations ##
 
 * Floppy disk images cannot be changed while the emulator is running.
-* Extended (Kakucho-hyoji) mode is not supported.
 * JX-5 7.2MHz mode is not supported.
 * There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
 * Superfast and quiet diskette drives.

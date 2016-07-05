@@ -35,6 +35,10 @@ static const int SURFACE_WIDTH = 800, SURFACE_HEIGHT = 240;
 static const int HSTART = -0x30, VSTART = -1;
 static const int HSYNCSTART = 600, VSYNCSTART = 200;
 static const int HSYNCEND = 1000, VSYNCEND = 300;
+static const int EX_SURFACE_WIDTH = 800, EX_SURFACE_HEIGHT = 600;
+static const int EX_HSTART = 0x0, EX_VSTART = -1;
+static const int EX_HSYNCSTART = 600, EX_VSYNCSTART = 500;
+static const int EX_HSYNCEND = 1000, EX_VSYNCEND = 700;
 
 jvideo::~jvideo ()
 {
@@ -130,6 +134,70 @@ jvideo::out3da (bool vp2, unsigned char data)
       break;
     case 0x10 ... 0x1f:
       palette[v3da & 15] = data & 15;
+      break;
+    }
+}
+
+unsigned int
+jvideo::in3dd ()
+{
+  flag3dd = false;
+  return 0;			// FIXME: Return what?
+}
+
+void
+jvideo::out3dd (unsigned char data)
+{
+  if (!flag3dd)
+    {
+      flag3dd = true;
+      v3dd = data;
+      return;
+    }
+  flag3dd = false;
+  switch (v3dd)
+    {
+    case 0:
+      // Make internal register access posibble
+      break;
+    case 1:
+      // Make internal register access impossible and clear registers
+      // except palette registers
+      break;
+    case 2:
+      // Bit0=0: CRTC cursor
+      // Bit0=1: Invert character box (only unicolor)
+      // Bit1=0: Text
+      // Bit1=1: Graphic
+      // Bit2=0: Sync off (no hsync/vsync output)
+      // Bit2=1: Sync on
+      // Bit3=0: Video off
+      // Bit3=1: Video on
+      // Bit5=0: Cursor width hankaku
+      // Bit5=1: Cursor width zenkaku
+      ex_reg2 = data;
+      break;
+    case 3:
+      ex_palette[(data >> 6) & 3] = data & 0xf;
+      break;
+    case 4:
+      // Make clock enable
+      break;
+    case 5:
+      // Bit3,2,1,0: Line color I,R,G,B
+      // Bit6: Foreground intensity (Color text/unicolor graphic)
+      // Bit7=0: Unicolor
+      // Bit7=1: Color
+      ex_reg5 = data;
+      break;
+    case 6:
+      // Bit3=0: 360x512 4 color
+      // Bit3=1: 720x512 2 color
+      ex_reg6 = data;
+      break;
+    case 7:
+      // Bit7,6,5,4: Background color I,R,G,B
+      ex_reg7 = data;
       break;
     }
 }
@@ -301,10 +369,12 @@ jvideo::convtick (bool disp)
     {
       gma1++;
       gma2++;
+      gma3++;
       if (!crtc.get_disp ())
 	{
 	  gra1++;
 	  gra2++;
+	  gra3++;
 	  if (gra1 == (mode1[0] & 1 ? 4 : 2))
 	    {
 	      gma10 = gma1;
@@ -319,6 +389,13 @@ jvideo::convtick (bool disp)
 	    }
 	  else
 	    gma2 = gma20;
+	  if (gra3 == 2)
+	    {
+	      gma30 = gma3;
+	      gra3 = 0;
+	    }
+	  else
+	    gma3 = gma30;
 	}
     }
 }
@@ -443,8 +520,302 @@ jvideo::convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
 }
 
 void
+jvideo::ex_convsub (int enable, int len, unsigned char *p, bool disp)
+{
+  if (disp)
+    {
+      if (!enable)
+	{
+	  memset (p, bordercolor, len);
+	  goto disabled;
+	}
+      if (!(ex_reg2 & 0x2))	// Text mode
+	{
+	  // Unicolor attr
+	  // Bit0: ZN=0: Hankaku
+	  // Bit0: ZN=1: Zenkaku
+	  // Bit1: EH=0: 1st byte of zenkaku
+	  // Bit1: EH=1: 2nd byte of zenkaku
+	  // Bit2: RV: Reverse
+	  // Bit3: INT: Intensity
+	  // Bit4: VG: Vertical line
+	  // Bit5: HG: Horizontal line
+	  // Bit6: US: Underline
+	  // Bit7: B: Blink
+	  // Color attr
+	  // Bit0: ZN=0: Hankaku
+	  // Bit0: ZN=1: Zenkaku
+	  // Bit1: EH=0: 1st byte of zenkaku
+	  // Bit1: EH=1: 2nd byte of zenkaku
+	  // Bit2: RV: Reverse
+	  // Bit3: R: 0 for red
+	  // Bit4: VG: Vertical line
+	  // Bit5: HG: Horizontal line
+	  // Bit6: G: 0 for green
+	  // Bit7: B: 0 for blue
+	  unsigned int ma = crtc.get_ma ();
+	  unsigned int ra = crtc.get_ra ();
+	  bool cursor = crtc.get_cursor (false);
+	  unsigned int voff = ((ma << 1) & 0x3fff);
+	  unsigned int d1 = vram.read (voff);
+	  unsigned int d2 = vram.read (voff | 1);
+	  unsigned int bg, fg, color;
+	  if (ex_reg5 & 0x80)	// Color
+	    {
+	      color = ((ex_reg5 & 0x40) ? 8 : 0) | ((d2 & 0x8) ? 0 : 4) |
+		((d2 & 0x40) ? 0 : 2) | ((d2 & 0x80) ? 0 : 1);
+	      if (d2 & 0x4)	// RV
+		{
+		  bg = color;
+		  fg = ex_reg7 >> 4;
+		}
+	      else
+		{
+		  bg = ex_reg7 >> 4;
+		  fg = color;
+		}
+	    }
+	  else			// Unicolor
+	    {
+	      if (d2 & 0x4)	// RV
+		{
+		  bg = 7;
+		  fg = 0;
+		}
+	      else
+		{
+		  bg = 0;
+		  fg = 7;
+		}
+	      if (d2 & 0x8)	// Intensity
+		{
+		  fg |= 8;
+		  bg |= 8;
+		}
+	      if (d2 & 0x80)	// Blink
+		{
+		  // FIXME: Blink rate
+		  if ((ex_framecount & 0x3f) < 0x10)
+		    fg = bg;
+		}
+	    }
+	  unsigned int addr;
+	  if (!(d2 & 1))
+	    addr = d1 << 5;
+	  else
+	    {
+	      int code, right;
+	      unsigned int d3;
+	      if (!(d2 & 2))
+		{
+		  d3 = vram.read ((((ma << 1) + 2) & 0x3fff));
+		  code = d1 * 256 + d3;
+		  right = 0;
+		}
+	      else
+		{
+		  d3 = vram.read ((((ma << 1) - 2) & 0x3fff));
+		  code = d3 * 256 + d1;
+		  right = 1;
+		}
+	      if (code >= 0xf000) // Gaiji support
+		{	// FIXME: hardware compares address?
+		  code &= 0x3f;
+		  code |= 0x8400;
+		}
+	      addr = ((code & 0x1fff) << 5) + right;
+	    }
+	  unsigned int d = 0;
+	  if (ra >= 2 && ra < 18)
+	    d = kanjirom.read (addr | ((ra - 2) << 1));
+	  // FIXME: Which line color for unicolor mode?
+	  p[0] = (d2 & 0x10) ? (ex_reg5 & 0xf) ^ 0xf : bg;
+	  if ((d2 & 0x20) && !ra)
+	    for (int n = 0; n < 9; n++)
+	      p[n] = (ex_reg5 & 0xf) ^ 0xf;
+	  else if ((d2 & 0x40) && !(ex_reg5 & 0x80) && ra == 18)
+	    // FIXME: Underline position and color
+	    for (int n = 0; n < 9; n++)
+	      p[n] = (d2 & 0x8) | 7;
+	  else
+	    {
+	      const int shift = (d2 & 0x2) ? 0 : 1;
+	      for (int n = 0; n < 8; n++, d <<= 1)
+		p[n + shift] = (d & 128) ? fg : bg;
+	      if (!shift)
+		p[8] = bg;
+	    }
+	  // FIXME: Cursor color
+	  if (cursor || (ex_prev_cursor && (ex_reg2 & 0x20)))
+	    {
+	      if (!(ex_reg5 & 0x80) && (ex_reg2 & 1))
+		for (int n = 0; n < 9; n++)
+		  p[n] ^= 0xf;
+	      else
+		for (int n = 0; n < 9; n++)
+		  p[n] = !(ex_reg5 & 0x80) && (d2 & 0x8) ? 15 : 7;
+	    }
+	  ex_prev_cursor = cursor;
+	}
+      else			// Graphics mode
+	{
+	  unsigned int voff = (((gra3 << 15) & 0x8000) ^ 0x8000) |
+	    ((gma3 << 1) & 0x7fff);
+	  unsigned int d1 = vram.read (voff);
+	  unsigned int d2 = vram.read (voff | 1);
+	  unsigned int d = (d1 << 8) | d2;
+	  if (!(ex_reg5 & 0x80)) // Unicolor
+	    {
+	      // FIXME: Unicolor graphics mode?
+	      for (int n = 0; n < 16; n++, d <<= 1)
+		p[n] = ((d & 0x8000) ? 7 : 0) | ((ex_reg5 & 0x40) ? 8 : 0);
+	    }
+	  else if (ex_reg6 & 0x8) // 2 color
+	    {
+	      // SCREEN 2
+	      for (int n = 0; n < 16; n++, d <<= 1)
+		p[n] = ex_palette[(d >> 15) & 1];
+	    }
+	  else 			// 4 color
+	    {
+	      // SCREEN 1,1
+	      for (int n = 0; n < 16; n += 2, d <<= 2)
+		p[n] = p[n + 1] = ex_palette[(d >> 14) & 3];
+	    }
+	}
+    disabled:
+      convtick (true);
+    }
+  else
+    {
+      if (p)
+	memset (p, bordercolor, len);
+      convtick (crtc.get_disp ());
+    }
+}
+
+void
+jvideo::ex_conv (int clockcount, bool drawflag)
+{
+  const bool enable = !!(ex_reg2 & 0x8);
+  const unsigned int len = ex_reg2 & 0x2 ? 16 : 9;
+  while (clockcount > 0)
+    {
+      const int clk = clockcount > 16 ? 16 : clockcount;
+      clockcount -= clk;
+      // FIXME: Ex-video is 20MHz interlace but this implementation is
+      // 40MHz progressive
+      ex_convcount += clk * 40000000;
+      if (ex_convcount < len * 14318180)
+	return;
+      int nchars = ex_convcount / (len * 14318180);
+      ex_convcount %= len * 14318180;
+      if (SDL_MUSTLOCK (myexsurface))
+	SDL_LockSurface (myexsurface);
+      while (nchars-- > 0)
+	{
+	  bool hsync = crtc.get_hsync ();
+	  bool vsync = crtc.get_vsync ();
+	  bool disp = crtc.get_disp ();
+	  if (disp && gma_reset)
+	    {
+	      gma1 = gma2 = gma3 = gma10 = gma20 = gma30 = crtc.get_ma ();
+	      gra1 = gra2 = gra3 = 0;
+	      ex_framecount++;
+	      gma_reset = false;
+	      correct_disp_pos ();
+	    }
+	  if (draw_y >= 0 && draw_y < EX_SURFACE_HEIGHT && draw_x >= 0 &&
+	      draw_x + len <= EX_SURFACE_WIDTH)
+	    {
+	      ex_convsub (enable, len,
+			  static_cast<unsigned char *> (myexsurface->pixels) +
+			  draw_y * myexsurface->pitch + draw_x, disp);
+	      last_color = *(static_cast<unsigned char *> (myexsurface->pixels) +
+			     draw_y * myexsurface->pitch + draw_x);
+	    }
+	  else
+	    ex_convsub (enable, len, NULL, false);
+	  if (hsync)
+	    {
+	      if (draw_x != EX_HSTART)
+		draw_x += len;
+	      if (draw_x >= EX_HSYNCSTART)
+		{
+		  if (draw_y >= 0 && draw_y < EX_SURFACE_HEIGHT)
+		    for (; draw_x < EX_SURFACE_WIDTH; draw_x++)
+		      *(static_cast<unsigned char *> (myexsurface->pixels) +
+			draw_y * myexsurface->pitch + draw_x) = 0;
+		  draw_x = EX_HSYNCEND;
+		}
+	    }
+	  else
+	    draw_x += len;
+	  if (draw_x >= EX_HSYNCEND)
+	    {
+	      draw_x = EX_HSTART;
+	      draw_y++;
+	    }
+	  if (vsync)
+	    {
+	      if (draw_y == EX_VSTART)
+		draw_x = EX_HSTART;
+	      if (draw_y >= EX_VSYNCSTART)
+		{
+		  if (draw_x < 0)
+		    draw_x = 0;
+		  if (drawflag)
+		    for (; draw_y < EX_SURFACE_HEIGHT; draw_y++, draw_x = 0)
+		      for (; draw_x < EX_SURFACE_WIDTH; draw_x++)
+			*(static_cast<unsigned char *> (myexsurface->pixels) +
+			  draw_y * myexsurface->pitch + draw_x) = 0;
+		  draw_y = EX_VSYNCEND;
+		}
+	      if (!vsynccount)
+		{
+		  trigger_irq8259 (5);
+		  gma_reset = true;
+		}
+	      vsynccount += len;
+	      if (vsynccount == 0x200) // FIXME: Interrupt trigger for 512 cycles?
+		untrigger_irq8259 (5);
+	    }
+	  else
+	    {
+	      if (vsynccount)
+		{
+		  if (vsynccount < 0x200)
+		    untrigger_irq8259 (5);
+		  vsynccount = 0;
+		}
+	    }
+	  if (draw_y >= EX_VSYNCEND)
+	    {
+	      if (drawflag)
+		{
+		  if (SDL_MUSTLOCK (myexsurface))
+		    SDL_UnlockSurface (myexsurface);
+		  ex_draw ();
+		  if (SDL_MUSTLOCK (myexsurface))
+		    SDL_LockSurface (myexsurface);
+		}
+	      draw_x = EX_HSTART;
+	      draw_y = EX_VSTART;
+	    }
+	}
+      if (SDL_MUSTLOCK (myexsurface))
+	SDL_UnlockSurface (myexsurface);
+    }
+}
+
+void
 jvideo::conv (int clockcount, bool drawflag)
 {
+  if (palettemask[1] & 0x80)
+    {
+      ex_conv (clockcount, drawflag);
+      return;
+    }
   int readtop1 = (pagereg[0] & 7) * 16384;
   int readtop2 = (pagereg[1] & 3) * 16384;
   int enable1 = mode1[0] & 8;
@@ -464,8 +835,8 @@ jvideo::conv (int clockcount, bool drawflag)
       bool disp = crtc.get_disp ();
       if (disp && gma_reset)
 	{
-	  gma1 = gma2 = gma10 = gma20 = crtc.get_ma ();
-	  gra1 = gra2 = 0;
+	  gma1 = gma2 = gma3 = gma10 = gma20 = gma30 = crtc.get_ma ();
+	  gra1 = gra2 = gra3 = 0;
 	  gma_reset = false;
 	  correct_disp_pos ();
 	}
@@ -590,12 +961,16 @@ jvideo::jvideo (SDL_Window *window, jmem &program_arg, jmem &kanjirom_arg)
   draw_x = draw_y = 0;
   gma_reset = true;
   vsynccount = 0;
+  ex_convcount = 0;
 
   jvideo::window = window;
   mypalette = SDL_AllocPalette (256);
   mysurface = SDL_CreateRGBSurface (0, SURFACE_WIDTH, SURFACE_HEIGHT, 8, 0, 0,
 				    0, 0);
   SDL_SetSurfacePalette (mysurface, mypalette);
+  myexsurface = SDL_CreateRGBSurface (0, EX_SURFACE_WIDTH, EX_SURFACE_HEIGHT,
+				      8, 0, 0, 0, 0);
+  SDL_SetSurfacePalette (myexsurface, mypalette);
   SDL_SetPaletteColors (mypalette, cl, 0, 16);
   // SDL_BlitScaled seems not working with 8bit depth surface so
   // create another 32bit depth surface and copy twice to blit :-)
@@ -655,6 +1030,29 @@ jvideo::draw ()
       srcrect.h /= 2;
       SDL_BlitSurface (mysurface, &srcrect, mysurface2, &srcrect);
       SDL_BlitScaled (mysurface2, &srcrect, surface, &dstrect);
+    }
+  SDL_UpdateWindowSurface (window);
+}
+
+void
+jvideo::ex_draw ()
+{
+  SDL_Surface *surface = SDL_GetWindowSurface (window);
+  SDL_Rect dstrect;
+  dstrect.w = surface->w;
+  dstrect.h = surface->h;
+  if (dstrect.w == EX_SURFACE_WIDTH && dstrect.h == EX_SURFACE_HEIGHT)
+    SDL_BlitSurface (myexsurface, NULL, surface, NULL);
+  else
+    {
+      SDL_Rect srcrect;
+      srcrect.w = EX_SURFACE_WIDTH;
+      srcrect.h = EX_SURFACE_HEIGHT;
+      set_rect (srcrect.x, srcrect.w, dstrect.x, dstrect.w, disp_start_x,
+		720, 16);
+      set_rect (srcrect.y, srcrect.h, dstrect.y, dstrect.h, disp_start_y,
+		525, 16);
+      SDL_BlitSurface (myexsurface, &srcrect, surface, &dstrect);
     }
   SDL_UpdateWindowSurface (window);
 }
@@ -909,8 +1307,8 @@ bool
 jvideo::j46505::get_vsync ()
 {
   if (iy >= reg[VSYNCPOS] &&
-      (iy - reg[VSYNCPOS]) * (reg[MAXSCANLINE] + 1) + ira <
-      get_vsync_lines (reg[HSYNCWIDTH]))
+      (iy - reg[VSYNCPOS]) * (reg[MAXSCANLINE] + 1 + (reg[INTERMODE] & 1)) +
+      ira < get_vsync_lines (reg[HSYNCWIDTH]))
     return true;
   else
     return false;
@@ -924,7 +1322,7 @@ jvideo::j46505::tick ()
     {
       ix = 0;
       ira++;
-      if (iy <= reg[VTOTAL] && ira > reg[MAXSCANLINE])
+      if (iy <= reg[VTOTAL] && ira > reg[MAXSCANLINE] + (reg[INTERMODE] & 1))
 	{
 	  ira = 0;
 	  iy++;

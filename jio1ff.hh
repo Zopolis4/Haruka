@@ -19,12 +19,14 @@
 class jio1ffstatus : public jbus::io
 {
   bool base1_rom, base2_rom;
+  bool ex_video;
 public:
   jio1ffstatus (jbus &bus);
   void ioport_read (unsigned int addr, unsigned int &val, int &cycles);
   void ioport_write (unsigned int addr, unsigned int val, int &cycles);
   inline void set_base1_rom (bool d) { base1_rom = d; }
   inline void set_base2_rom (bool d) { base2_rom = d; }
+  void set_ex_video (bool d);
 };
 
 class jio1ffdev

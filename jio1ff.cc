@@ -31,7 +31,8 @@ jio1ffstatus::ioport_read (unsigned int addr, unsigned int &val, int &cycles)
 {
   if (addr == 0x1ff)
     {
-      val = 255 ^ (base1_rom ? 32 : 0) ^ (base2_rom ? 64 : 0);
+      val = 255 ^ (base1_rom ? 32 : 0) ^ (base2_rom ? 64 : 0) ^
+	(ex_video ? 0x80 : 0);
       cycles = 6;
     }
 }
@@ -41,6 +42,12 @@ jio1ffstatus::ioport_write (unsigned int addr, unsigned int val, int &cycles)
 {
   if (addr == 0x1ff)
     cycles = 6;
+}
+
+void
+jio1ffstatus::set_ex_video (bool d)
+{
+  ex_video = d;
 }
 
 jio1ffdev::conf::conf (unsigned int index, unsigned int andreg1,
