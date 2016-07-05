@@ -808,6 +808,7 @@ jvideo::j46505::set_reg (unsigned int idx, unsigned int val)
     case HTOTAL:
     case HDISP:
     case HSYNCPOS:
+    case HSYNCWIDTH:
     case SADDRLOW:
     case CURLOCLOW:
       reg[idx] = val & 0xff;
@@ -826,9 +827,6 @@ jvideo::j46505::set_reg (unsigned int idx, unsigned int val)
     case MAXSCANLINE:
     case CUREND:
       reg[idx] = val & 0x1f;
-      break;
-    case HSYNCWIDTH:
-      reg[idx] = val & 0xf;
       break;
     case INTERMODE:
       reg[idx] = val & 0x3;
@@ -892,17 +890,27 @@ jvideo::j46505::get_disp ()
 bool
 jvideo::j46505::get_hsync ()
 {
-  if (ix >= reg[HSYNCPOS] && ix - reg[HSYNCPOS] < reg[HSYNCWIDTH])
+  if (ix >= reg[HSYNCPOS] && ix - reg[HSYNCPOS] < (reg[HSYNCWIDTH] & 0xf))
     return true;
   else
     return false;
+}
+
+static unsigned int
+get_vsync_lines (unsigned int hsyncwidth)
+{
+  unsigned int lines = hsyncwidth >> 4;
+  if (!lines)
+    lines = 16;
+  return lines;
 }
 
 bool
 jvideo::j46505::get_vsync ()
 {
   if (iy >= reg[VSYNCPOS] &&
-      (iy - reg[VSYNCPOS]) * (reg[MAXSCANLINE] + 1) + ira < 16)
+      (iy - reg[VSYNCPOS]) * (reg[MAXSCANLINE] + 1) + ira <
+      get_vsync_lines (reg[HSYNCWIDTH]))
     return true;
   else
     return false;
