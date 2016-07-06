@@ -30,6 +30,7 @@
 #include "jjoy.hh"
 #include "jbus.hh"
 #include "jio1ff.hh"
+#include "jrtc.hh"
 
 using std::cerr;
 using std::endl;
@@ -541,6 +542,33 @@ public:
   };
 };
 
+class devrtc : public jbus::io
+{
+  jrtc &rtc;
+public:
+  devrtc (jbus &bus, jrtc &rtc) : io (bus), rtc (rtc)
+  {
+    set_memory_iobmp (0);
+    set_ioport_iobmp (0x0040);
+  }
+  void ioport_read (unsigned int addr, unsigned int &val, int &cycles)
+  {
+    cycles = 6;
+    if ((addr & 0xfff0) == 0x360)
+      val = rtc.inb (addr);
+    if (false && (addr & 0xfff0) == 0x360)
+      std::cerr << "RTC Read " << std::hex << addr << ',' << val << std::endl;
+  }
+  void ioport_write (unsigned int addr, unsigned int val, int &cycles)
+  {
+    cycles = 6;
+    if ((addr & 0xfff0) == 0x360)
+      rtc.outb (addr, val);
+    if (false && (addr & 0xfff0) == 0x360)
+      std::cerr << "RTC Write " << std::hex << addr << ',' << val << std::endl;
+  }
+};
+
 int
 sdlmainthread (void *p)
 {
@@ -586,6 +614,7 @@ sdlmainthread (void *p)
       jvideo videoclass (md->window, program, kanjirom);
       jjoy joy;
       stdfdc fdc (videoclass);
+      jrtc rtc;
       devrom d_irom7 (bus, jio1ffdev::conf (0x00, 0203, 0003, 0074, 0040),
 		      systemrom, 0, 0x1ffff);
       devrom d_erom2 (bus, jio1ffdev::conf (0x01, 0357, 0157, 0020, 0000),
@@ -645,6 +674,7 @@ sdlmainthread (void *p)
       devmfg d_mfg (bus);
       jio1ffstatus d_1ff (bus);
       devexmem d_exmem (bus, mainram, videoclass);
+      devrtc d_rtc (bus, rtc);
       int clk, clk2;
       bool redraw = false;
 
@@ -794,6 +824,7 @@ sdlmainthread (void *p)
 	  joy.clk (clk2);
 	  soundclass.clk (clk2);
 	  fdc.clk (clk2);
+	  rtc.clk (clk2);
 	  if (nmiflag)
 	    nmi8088 (1);
 	  clk += clk2;
