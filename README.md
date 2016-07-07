@@ -66,7 +66,7 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-w] [-j] [-o] [-e] [-f] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [-o] [-e] [-f] [-m RAM-size] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options ###
@@ -76,6 +76,12 @@ Run 5511emu.
 * -o: Original PCjr mode
 * -e: Set window size for extended video mode
 * -f: Fast mode - CPU 7.2MHz, like JX-5 extended (kakucho) mode
+* -m 64: RAM size 64KiB (no memory expansion)
+* -m 128: RAM size 128KiB (64KB memory expansion)
+* -m 256: RAM size 256KiB (64KB memory expansion + 1 x 128KB memory expansion)
+* -m 384: RAM size 384KiB (64KB memory expansion + 2 x 128KB memory expansion)
+* -m 512: RAM size 512KiB (64KB memory expansion + 3 x 128KB memory expansion)
+* -m 640: RAM size 640KiB (64KB memory expansion + 4 x 128KB memory expansion) (Original PCjr mode only)
 * -d0 cartridge-d0: Load cartridge image from address D0000h
 * -d8 cartridge-d8: Load cartridge image from address D8000h
 * -e0 cartridge-e0: Load cartridge image from address E0000h
@@ -83,8 +89,13 @@ Run 5511emu.
 * -f0 cartridge-f0: Load cartridge image from address F0000h
 * -f8 cartridge-f8: Load cartridge image from address F8000h
 
+### Note ###
+
+Default RAM size is 640KiB for original PCjr mode or 512KiB. Please note that the main and 64KB memory expansion RAM which is also used as VRAM is slower than 128K memory expansion RAM. If the fast memory is located at the lowest memory address, memory size difference may cause program execution speed difference. In PCjr mode the slow memory is always located at the lowest memory address.
+
 ## Limitations ##
 
+* The RAM size 64KiB option (-m 64) just sets the 8255 PC3 bit. It does not hide the 128KiB RAM.
 * Floppy disk images cannot be changed while the emulator is running.
 * There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
 * Superfast and quiet diskette drives.

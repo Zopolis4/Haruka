@@ -91,6 +91,7 @@ struct maindata
   bool warmflag;
   bool origpcjrflag;
   bool fastflag;
+  int memsize;
   char *cart[6];		// D0, D8, E0, E8, F0, F8
   char *fdfile[4];
   jevent *event;
@@ -216,9 +217,10 @@ class dev8255 : public jio1ffdev
   unsigned int dat8255[3];
   jkey &kbd;
   sdlsound &sound;
+  bool exmem64k;
 public:
-  dev8255 (jbus &bus, conf c, jkey &kbd, sdlsound &sound)
-    : jio1ffdev (bus, c), kbd (kbd), sound (sound)
+  dev8255 (jbus &bus, conf c, jkey &kbd, sdlsound &sound, bool exmem64k)
+    : jio1ffdev (bus, c), kbd (kbd), sound (sound), exmem64k (exmem64k)
   {
     dat8255[0] = dat8255[1] = dat8255[2] = 0;
   };
@@ -233,7 +235,8 @@ public:
 	// Cassette motor on if (dat8255[1] & 0x18) == 0.
 	// Bit 4 is same as bit 5 during cassette motor off.
 	// This is tested by BIOS POST.
-	(sound.gettimer2out () ? dat8255[1] & 0x18 ? 0x30 : 0x20 : 0);
+	(sound.gettimer2out () ? dat8255[1] & 0x18 ? 0x30 : 0x20 : 0) |
+	(exmem64k ? 0 : 0x8);
   };
   void ioport_write (unsigned int addr, unsigned int val, int &cycles)
   {
@@ -496,18 +499,24 @@ class devexmem : public jbus::io
 {
   jmem &mainram;
   jvideo &video;
+  const unsigned int exmemsize;
 public:
-  devexmem (jbus &bus, jmem &mainram, jvideo &video)
-    : io (bus), mainram (mainram), video (video)
+  devexmem (jbus &bus, jmem &mainram, jvideo &video, unsigned int exmemsize)
+    : io (bus), mainram (mainram), video (video), exmemsize (exmemsize)
   {
-    set_memory_iobmp (0x7fff);
+    // if (exmemsize == 128 * 1024 * 0) set_memory_iobmp (0);
+    // if (exmemsize == 128 * 1024 * 1) set_memory_iobmp (0xf);
+    // if (exmemsize == 128 * 1024 * 2) set_memory_iobmp (0x3f);
+    // if (exmemsize == 128 * 1024 * 3) set_memory_iobmp (0xff);
+    // if (exmemsize == 128 * 1024 * 4) set_memory_iobmp (0x3ff);
+    set_memory_iobmp (exmemsize >= 0x20000 ? (4 << (exmemsize >> 16)) - 1 : 0);
     set_ioport_iobmp (0);
   };
   void memory_read (unsigned int addr, unsigned int &val, int &cycles)
   {
     if (video.pcjrmem ())
       {
-	if (addr >= 0x20000 && addr < 0x80000)
+	if (addr >= 0x20000 && addr < 0x20000 + exmemsize)
 	  {
 	    cycles = 4;
 	    val = mainram.read (addr - 0x20000);
@@ -515,7 +524,7 @@ public:
       }
     else
       {
-	if (addr < 0x60000)
+	if (addr < exmemsize)
 	  {
 	    cycles = 4;
 	    val = mainram.read (addr);
@@ -526,7 +535,7 @@ public:
   {
     if (video.pcjrmem ())
       {
-	if (addr >= 0x20000 && addr < 0x80000)
+	if (addr >= 0x20000 && addr < 0x20000 + exmemsize)
 	  {
 	    cycles = 4;
 	    mainram.write (addr - 0x20000, val);
@@ -534,7 +543,7 @@ public:
       }
     else
       {
-	if (addr < 0x60000)
+	if (addr < exmemsize)
 	  {
 	    cycles = 4;
 	    mainram.write (addr, val);
@@ -576,7 +585,7 @@ sdlmainthread (void *p)
   maindata *md = static_cast <maindata *> (p);
   jmem systemrom (131072);
   jmem kanjirom (262144);
-  jmem mainram (384 * 1024);	// extended 128KB x 3
+  jmem mainram (512 * 1024);	// extended 128KB x 4 (last 128KB for PCjr)
   jmem program (128 * 1024);	// base 64KB + extended 64KB
   jmem cartrom (192 * 1024);	// D0000-FFFFF
   bool cart_exist[6] = { false, false, false, false, false, false };
@@ -642,7 +651,7 @@ sdlmainthread (void *p)
       dev8253 d_8253 (bus, jio1ffdev::conf (0x81, 0200, 0000, 0010, 0000),
 		      soundclass);
       dev8255 d_8255 (bus, jio1ffdev::conf (0x82, 0200, 0000, 0014, 0000),
-		      *md->keybd, soundclass);
+		      *md->keybd, soundclass, md->memsize > 64);
       devnmi d_nmi (bus, jio1ffdev::conf (0x83, 0200, 0000, 0024, 0000),
 		    *md->keybd, soundclass);
       devsond d_sond (bus, jio1ffdev::conf (0x84, 0200, 0000, 0030, 0000),
@@ -674,7 +683,8 @@ sdlmainthread (void *p)
       jio1ffdev d_etsc (bus, jio1ffdev::conf (0x93, 0200, 0000, 0000, 0177));
       devmfg d_mfg (bus);
       jio1ffstatus d_1ff (bus);
-      devexmem d_exmem (bus, mainram, videoclass);
+      devexmem d_exmem (bus, mainram, videoclass,
+			md->memsize > 128 ? (md->memsize - 128) * 1024 : 0);
       devrtc d_rtc (bus, rtc);
       int clk, clk2;
       bool redraw = false;
@@ -717,8 +727,16 @@ sdlmainthread (void *p)
 	      //jio.memw (0x472, 0x34);
 	      if (md->warmflag)
 		{
-		  mainram.write (0x473, 0x12);
-		  mainram.write (0x472, 0x34);
+		  if (md->memsize > 128)
+		    {
+		      mainram.write (0x473, 0x12);
+		      mainram.write (0x472, 0x34);
+		    }
+		  else
+		    {
+		      program.write (0x473, 0x12);
+		      program.write (0x472, 0x34);
+		    }
 		}
 	      cartrom.clearrom ();
 	      d_1ff.set_base1_rom (false);
@@ -882,6 +900,7 @@ main (int argc, char **argv)
     md.cart[i] = NULL;
   for (i = 0; i < 4; i++)
     md.fdfile[i] = NULL;
+  char *memsize = NULL;
   for (i = 1, j = 0; i < argc; i++)
     {
       if (strcmp (argv[i], "-j") == 0)
@@ -894,6 +913,8 @@ main (int argc, char **argv)
 	SDL_SetWindowSize (md.window, 752, 557);
       else if (strcmp (argv[i], "-f") == 0)
 	md.fastflag = true;
+      else if (strcmp (argv[i], "-m") == 0 && i + 1 < argc)
+	memsize = argv[++i];
       else if (strcmp (argv[i], "-d0") == 0 && i + 1 < argc)
 	md.cart[0] = argv[++i];
       else if (strcmp (argv[i], "-d8") == 0 && i + 1 < argc)
@@ -908,6 +929,33 @@ main (int argc, char **argv)
 	md.cart[5] = argv[++i];
       else if (j < 4)
 	md.fdfile[j++] = argv[i];
+    }
+  if (memsize)
+    {
+      if (!strcmp (memsize, "64"))
+	md.memsize = 64;
+      else if (!strcmp (memsize, "128"))
+	md.memsize = 128;
+      else if (!strcmp (memsize, "256"))
+	md.memsize = 256;
+      else if (!strcmp (memsize, "384"))
+	md.memsize = 384;
+      else if (!strcmp (memsize, "512"))
+	md.memsize = 512;
+      else if (!strcmp (memsize, "640") && md.origpcjrflag)
+	md.memsize = 640;
+      else
+	{
+	  std::cerr << "Invalid memory size: " << memsize << std::endl;
+	  return 1;
+	}
+    }
+  else
+    {
+      if (md.origpcjrflag)
+	md.memsize = 640;
+      else
+	md.memsize = 512;
     }
 
   jkey keybd;
