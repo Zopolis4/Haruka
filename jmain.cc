@@ -90,6 +90,7 @@ struct maindata
   bool pcjrflag;
   bool warmflag;
   bool origpcjrflag;
+  bool fastflag;
   char *cart[6];		// D0, D8, E0, E8, F0, F8
   char *fdfile[4];
   jevent *event;
@@ -687,6 +688,11 @@ sdlmainthread (void *p)
       }
 
       clk = 0;
+      // CPU speed choice
+      // Normal mode: 14.318MHz / 3 = 4.77MHz
+      // Fast mode:   14.318MHz / 2 = 7.16MHz
+      // Fast mode corresponds to JX-5 extended (kakucho) mode
+      int cpuclkdiv = md->fastflag ? 2 : 3;
       while (!md->endflag)
 	{
 	  if (md->resetflag)
@@ -818,7 +824,7 @@ sdlmainthread (void *p)
 		    }
 		}
 	    }
-	  clk2 = run8088 () * 3;
+	  clk2 = run8088 () * cpuclkdiv;
 	  videoclass.clk (clk2, redraw);
 	  bool nmiflag = md->keybd->clkin (clk2);
 	  joy.clk (clk2);
@@ -871,6 +877,7 @@ main (int argc, char **argv)
   md.pcjrflag = false;
   md.warmflag = false;
   md.origpcjrflag = false;
+  md.fastflag = false;
   for (i = 0; i < 6; i++)
     md.cart[i] = NULL;
   for (i = 0; i < 4; i++)
@@ -885,6 +892,8 @@ main (int argc, char **argv)
 	md.origpcjrflag = true;
       else if (strcmp (argv[i], "-e") == 0)
 	SDL_SetWindowSize (md.window, 752, 557);
+      else if (strcmp (argv[i], "-f") == 0)
+	md.fastflag = true;
       else if (strcmp (argv[i], "-d0") == 0 && i + 1 < argc)
 	md.cart[0] = argv[++i];
       else if (strcmp (argv[i], "-d8") == 0 && i + 1 < argc)

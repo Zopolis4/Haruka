@@ -66,7 +66,7 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-w] [-j] [-o] [-e] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [-o] [-e] [-f] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options ###
@@ -75,6 +75,7 @@ Run 5511emu.
 * -j: PCjr cartridge
 * -o: Original PCjr mode
 * -e: Set window size for extended video mode
+* -f: Fast mode - CPU 7.2MHz, like JX-5 extended (kakucho) mode
 * -d0 cartridge-d0: Load cartridge image from address D0000h
 * -d8 cartridge-d8: Load cartridge image from address D8000h
 * -e0 cartridge-e0: Load cartridge image from address E0000h
@@ -85,7 +86,6 @@ Run 5511emu.
 ## Limitations ##
 
 * Floppy disk images cannot be changed while the emulator is running.
-* JX-5 7.2MHz mode is not supported.
 * There are bugs in CPU emulation, such as incorrect instruction clock cycles, rep prefix with other prefixes, etc.
 * Superfast and quiet diskette drives.
 * CG1 (Character Generator 1) uses CG2 fonts, because CG1 ROM is not readable from CPU and ROM reader is needed to create CG1 ROM image file.
