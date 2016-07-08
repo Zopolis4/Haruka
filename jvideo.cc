@@ -1015,6 +1015,7 @@ jvideo::draw ()
   dstrect.h = surface->h;
   if (dstrect.w == SURFACE_WIDTH && dstrect.h == SURFACE_HEIGHT * 2)
     {
+      clear_surface_if_necessary (surface, 0, 0, dstrect.w, dstrect.h);
       SDL_BlitSurface (mysurface, NULL, mysurface2, NULL);
       SDL_BlitScaled (mysurface2, NULL, surface, NULL);
     }
@@ -1029,6 +1030,8 @@ jvideo::draw ()
 		400, 32);
       srcrect.y /= 2;
       srcrect.h /= 2;
+      clear_surface_if_necessary (surface, dstrect.x, dstrect.y, dstrect.w,
+				  dstrect.h);
       SDL_BlitSurface (mysurface, &srcrect, mysurface2, &srcrect);
       SDL_BlitScaled (mysurface2, &srcrect, surface, &dstrect);
     }
@@ -1043,7 +1046,10 @@ jvideo::ex_draw ()
   dstrect.w = surface->w;
   dstrect.h = surface->h;
   if (dstrect.w == EX_SURFACE_WIDTH && dstrect.h == EX_SURFACE_HEIGHT)
-    SDL_BlitSurface (myexsurface, NULL, surface, NULL);
+    {
+      clear_surface_if_necessary (surface, 0, 0, dstrect.w, dstrect.h);
+      SDL_BlitSurface (myexsurface, NULL, surface, NULL);
+    }
   else
     {
       SDL_Rect srcrect;
@@ -1053,9 +1059,25 @@ jvideo::ex_draw ()
 		720, 16);
       set_rect (srcrect.y, srcrect.h, dstrect.y, dstrect.h, disp_start_y,
 		525, 16);
+      clear_surface_if_necessary (surface, dstrect.x, dstrect.y, dstrect.w,
+				  dstrect.h);
       SDL_BlitSurface (myexsurface, &srcrect, surface, &dstrect);
     }
   SDL_UpdateWindowSurface (window);
+}
+
+void
+jvideo::clear_surface_if_necessary (SDL_Surface *surface, int x, int y, int w,
+				    int h)
+{
+  if (x != prev_x || y != prev_y || w != prev_w || h != prev_h)
+    {
+      SDL_FillRect (surface, NULL, SDL_MapRGB (surface->format, 0, 0, 0));
+      prev_x = x;
+      prev_y = y;
+      prev_w = w;
+      prev_h = h;
+    }
 }
 
 ////////////////////////////////////////////////////////////

@@ -75,6 +75,9 @@ private:
   void ex_conv (int clockcount, bool drawflag);
   void convtick (bool disp);
   void ex_draw ();
+  void draw ();
+  void clear_surface_if_necessary (SDL_Surface *surface, int x, int y, int w,
+				   int h);
   int index3d4;
   bool flag3dd;
   unsigned char v3dd;
@@ -86,6 +89,7 @@ private:
   unsigned int ex_convcount;
   unsigned int ex_framecount;
   bool ex_prev_cursor;
+  int prev_x, prev_y, prev_w, prev_h;
 protected:
   int mode1[2], palettemask[2], mode2[2];
   unsigned char *drawdata;
@@ -132,7 +136,6 @@ public:
   jvideo (SDL_Window *, jmem &program, jmem &kanjirom)
     throw (char *);
   ~jvideo ();
-  void draw ();
   void floppyaccess (int n);
 };
 
