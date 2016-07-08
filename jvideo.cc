@@ -560,6 +560,7 @@ jvideo::ex_convsub (int enable, int len, unsigned char *p, bool disp)
 	  unsigned int d1 = vram.read (voff);
 	  unsigned int d2 = vram.read (voff | 1);
 	  unsigned int bg, fg, color;
+	  bool hidechar = false;
 	  if (ex_reg5 & 0x80)	// Color
 	    {
 	      color = ((ex_reg5 & 0x40) ? 8 : 0) | ((d2 & 0x8) ? 0 : 4) |
@@ -596,7 +597,7 @@ jvideo::ex_convsub (int enable, int len, unsigned char *p, bool disp)
 		{
 		  // FIXME: Blink rate
 		  if ((ex_framecount & 0x3f) < 0x10)
-		    fg = bg;
+		    hidechar = true;
 		}
 	    }
 	  unsigned int addr;
@@ -626,7 +627,7 @@ jvideo::ex_convsub (int enable, int len, unsigned char *p, bool disp)
 	      addr = ((code & 0x1fff) << 5) + right;
 	    }
 	  unsigned int d = 0;
-	  if (ra >= 2 && ra < 18)
+	  if (ra >= 2 && ra < 18 && !hidechar)
 	    d = kanjirom.read (addr | ((ra - 2) << 1));
 	  // FIXME: Which line color for unicolor mode?
 	  p[0] = (d2 & 0x10) ? (ex_reg5 & 0xf) ^ 0xf : bg;
@@ -653,7 +654,7 @@ jvideo::ex_convsub (int enable, int len, unsigned char *p, bool disp)
 		  p[n] ^= 0xf;
 	      else
 		for (int n = 0; n < 9; n++)
-		  p[n] = !(ex_reg5 & 0x80) && (d2 & 0x8) ? 15 : 7;
+		  p[n] = fg;
 	    }
 	  ex_prev_cursor = cursor;
 	}
