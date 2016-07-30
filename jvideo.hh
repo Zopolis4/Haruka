@@ -16,8 +16,6 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include <cstdio>
-#include "SDL.h"
 class jvideo
 {
 private:
@@ -76,8 +74,6 @@ private:
   void convtick (bool disp);
   void ex_draw ();
   void draw ();
-  void clear_surface_if_necessary (SDL_Surface *surface, int x, int y, int w,
-				   int h);
   int index3d4;
   bool flag3dd;
   unsigned char v3dd;
@@ -89,7 +85,6 @@ private:
   unsigned int ex_convcount;
   unsigned int ex_framecount;
   bool ex_prev_cursor;
-  int prev_x, prev_y, prev_w, prev_h;
 protected:
   int mode1[2], palettemask[2], mode2[2];
   unsigned char *drawdata;
@@ -125,17 +120,29 @@ public:
   bool pcjrmem () { return (mode2[1] & 16) ? true : false; }
   //virtual void floppyaccess (int n);
 private:
-  SDL_Window *window;
-  SDL_Surface *mysurface;
-  SDL_Surface *mysurface2;
-  SDL_Surface *myexsurface;
-  SDL_Palette *mypalette;
+  static const int SURFACE_WIDTH = 800, SURFACE_HEIGHT = 240;
+  static const int HSTART = -0x30, VSTART = -1;
+  static const int HSYNCSTART = 600, VSYNCSTART = 200;
+  static const int HSYNCEND = 1000, VSYNCEND = 300;
+  static const int EX_SURFACE_WIDTH = 800, EX_SURFACE_HEIGHT = 600;
+  static const int EX_HSTART = 0x0, EX_VSTART = -1;
+  static const int EX_HSYNCSTART = 600, EX_VSYNCSTART = 500;
+  static const int EX_HSYNCEND = 1000, EX_VSYNCEND = 700;
+public:
+  class hw
+  {
+  protected:
+    static const int WIDTH = EX_SURFACE_WIDTH;
+    static const int HEIGHT = EX_SURFACE_HEIGHT;
+  public:
+    virtual unsigned char *get_pointer (int x, int y) = 0;
+    virtual void draw (int width, int height, int left, int top) = 0;
+  };
+private:
+  hw &videohw;
   unsigned long *bits;
   unsigned long *bits2;
 public:
-  jvideo (SDL_Window *, jmem &program, jmem &kanjirom)
-    throw (char *);
-  ~jvideo ();
+  jvideo (hw &videohw, jmem &program, jmem &kanjirom);
   void floppyaccess (int n);
 };
-

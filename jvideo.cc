@@ -17,6 +17,7 @@
 */
 
 #include <iostream>
+#include <cstring>
 
 #include "jtype.hh"
 #include "jmem.hh"
@@ -29,22 +30,6 @@ extern "C"
 {
   extern void trigger_irq8259 (unsigned int irq_no);
   extern void untrigger_irq8259 (unsigned int irq_no);
-}
-
-static const int SURFACE_WIDTH = 800, SURFACE_HEIGHT = 240;
-static const int HSTART = -0x30, VSTART = -1;
-static const int HSYNCSTART = 600, VSYNCSTART = 200;
-static const int HSYNCEND = 1000, VSYNCEND = 300;
-static const int EX_SURFACE_WIDTH = 800, EX_SURFACE_HEIGHT = 600;
-static const int EX_HSTART = 0x0, EX_VSTART = -1;
-static const int EX_HSYNCSTART = 600, EX_VSYNCSTART = 500;
-static const int EX_HSYNCEND = 1000, EX_VSYNCEND = 700;
-
-jvideo::~jvideo ()
-{
-  SDL_FreeSurface (mysurface2);
-  SDL_FreeSurface (mysurface);
-  SDL_FreePalette (mypalette);
 }
 
 void
@@ -711,8 +696,6 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 	return;
       int nchars = ex_convcount / (len * 14318180);
       ex_convcount %= len * 14318180;
-      if (SDL_MUSTLOCK (myexsurface))
-	SDL_LockSurface (myexsurface);
       while (nchars-- > 0)
 	{
 	  bool hsync = crtc.get_hsync ();
@@ -729,11 +712,9 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 	  if (draw_y >= 0 && draw_y < EX_SURFACE_HEIGHT && draw_x >= 0 &&
 	      draw_x + len <= EX_SURFACE_WIDTH)
 	    {
-	      ex_convsub (enable, len,
-			  static_cast<unsigned char *> (myexsurface->pixels) +
-			  draw_y * myexsurface->pitch + draw_x, disp);
-	      last_color = *(static_cast<unsigned char *> (myexsurface->pixels) +
-			     draw_y * myexsurface->pitch + draw_x);
+	      ex_convsub (enable, len, videohw.get_pointer (draw_x, draw_y),
+			  disp);
+	      last_color = *videohw.get_pointer (draw_x, draw_y);
 	    }
 	  else
 	    ex_convsub (enable, len, NULL, false);
@@ -745,8 +726,7 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 		{
 		  if (draw_y >= 0 && draw_y < EX_SURFACE_HEIGHT)
 		    for (; draw_x < EX_SURFACE_WIDTH; draw_x++)
-		      *(static_cast<unsigned char *> (myexsurface->pixels) +
-			draw_y * myexsurface->pitch + draw_x) = 0;
+		      *videohw.get_pointer (draw_x, draw_y) = 0;
 		  draw_x = EX_HSYNCEND;
 		}
 	    }
@@ -768,8 +748,7 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 		  if (drawflag)
 		    for (; draw_y < EX_SURFACE_HEIGHT; draw_y++, draw_x = 0)
 		      for (; draw_x < EX_SURFACE_WIDTH; draw_x++)
-			*(static_cast<unsigned char *> (myexsurface->pixels) +
-			  draw_y * myexsurface->pitch + draw_x) = 0;
+			*videohw.get_pointer (draw_x, draw_y) = 0;
 		  draw_y = EX_VSYNCEND;
 		}
 	      if (!vsynccount)
@@ -793,19 +772,11 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 	  if (draw_y >= EX_VSYNCEND)
 	    {
 	      if (drawflag)
-		{
-		  if (SDL_MUSTLOCK (myexsurface))
-		    SDL_UnlockSurface (myexsurface);
-		  ex_draw ();
-		  if (SDL_MUSTLOCK (myexsurface))
-		    SDL_LockSurface (myexsurface);
-		}
+		ex_draw ();
 	      draw_x = EX_HSTART;
 	      draw_y = EX_VSTART;
 	    }
 	}
-      if (SDL_MUSTLOCK (myexsurface))
-	SDL_UnlockSurface (myexsurface);
     }
 }
 
@@ -827,8 +798,6 @@ jvideo::conv (int clockcount, bool drawflag)
   convcount += clockcount;
   if (convcount < len)
     return;
-  if (SDL_MUSTLOCK (mysurface))
-    SDL_LockSurface (mysurface);
   while (convcount >= len)
     {
       bool hsync = crtc.get_hsync ();
@@ -844,11 +813,10 @@ jvideo::conv (int clockcount, bool drawflag)
       if (draw_y >= 0 && draw_y < SURFACE_HEIGHT && draw_x >= 0 &&
 	  draw_x + len <= SURFACE_WIDTH)
 	{
-	  convsub (readtop1, readtop2, enable1, enable2, si, len,
-		   static_cast<unsigned char *> (mysurface->pixels) +
-		   draw_y * mysurface->pitch + draw_x, disp);
-	  last_color = *(static_cast<unsigned char *> (mysurface->pixels) +
-			 draw_y * mysurface->pitch + draw_x);
+	  unsigned char *p = videohw.get_pointer (draw_x, draw_y * 2 + 0);
+	  convsub (readtop1, readtop2, enable1, enable2, si, len, p, disp);
+	  memcpy (videohw.get_pointer (draw_x, draw_y * 2 + 1), p, len);
+	  last_color = *p;
 	}
       else
 	convsub (readtop1, readtop2, enable1, enable2, si, len, NULL, false);
@@ -860,8 +828,8 @@ jvideo::conv (int clockcount, bool drawflag)
 	    {
 	      if (draw_y >= 0 && draw_y < SURFACE_HEIGHT)
 		for (; draw_x < SURFACE_WIDTH; draw_x++)
-		  *(static_cast<unsigned char *> (mysurface->pixels) +
-		    draw_y * mysurface->pitch + draw_x) = 0;
+		  *videohw.get_pointer (draw_x, draw_y * 2 + 0) =
+		    *videohw.get_pointer (draw_x, draw_y * 2 + 1) = 0;
 	      draw_x = HSYNCEND;
 	    }
 	}
@@ -883,8 +851,8 @@ jvideo::conv (int clockcount, bool drawflag)
 	      if (drawflag)
 		for (; draw_y < SURFACE_HEIGHT; draw_y++, draw_x = 0)
 		  for (; draw_x < SURFACE_WIDTH; draw_x++)
-		    *(static_cast<unsigned char *> (mysurface->pixels) +
-		      draw_y * mysurface->pitch + draw_x) = 0;
+		    *videohw.get_pointer (draw_x, draw_y * 2 + 0) =
+		      *videohw.get_pointer (draw_x, draw_y * 2 + 1) = 0;
 	      draw_y = VSYNCEND;
 	    }
 	  if (!vsynccount)
@@ -908,20 +876,12 @@ jvideo::conv (int clockcount, bool drawflag)
       if (draw_y >= VSYNCEND)
 	{
 	  if (drawflag)
-	    {
-	      if (SDL_MUSTLOCK (mysurface))
-		SDL_UnlockSurface (mysurface);
-	      draw ();
-	      if (SDL_MUSTLOCK (mysurface))
-		SDL_LockSurface (mysurface);
-	    }
+	    draw ();
 	  draw_x = HSTART;
 	  draw_y = VSTART;
 	}
       convcount -= len;
     }
-  if (SDL_MUSTLOCK (mysurface))
-    SDL_UnlockSurface (mysurface);
 }
 
 void
@@ -929,28 +889,10 @@ jvideo::floppyaccess (int n)
 {
 }
 
-jvideo::jvideo (SDL_Window *window, jmem &program_arg, jmem &kanjirom_arg)
-  throw (char *)
-  : program (program_arg), vram (65536), kanjirom (kanjirom_arg)
+jvideo::jvideo (hw &videohw, jmem &program_arg, jmem &kanjirom_arg)
+  : program (program_arg), vram (65536), kanjirom (kanjirom_arg),
+    videohw (videohw)
 {
-  static SDL_Color cl[16]={
-    {r:0x00,g:0x00,b:0x00},
-    {r:0x00,g:0x00,b:0xdd},
-    {r:0x00,g:0xdd,b:0x00},
-    {r:0x00,g:0xdd,b:0xdd},
-    {r:0xdd,g:0x00,b:0x00},
-    {r:0xdd,g:0x00,b:0xdd},
-    {r:0xdd,g:0xdd,b:0x00},
-    {r:0xdd,g:0xdd,b:0xdd},
-    {r:0x88,g:0x88,b:0x88},
-    {r:0x88,g:0x88,b:0xff},
-    {r:0x88,g:0xff,b:0x88},
-    {r:0x88,g:0xff,b:0xff},
-    {r:0xff,g:0x88,b:0x88},
-    {r:0xff,g:0x88,b:0xff},
-    {r:0xff,g:0xff,b:0x88},
-    {r:0xff,g:0xff,b:0xff},
-  };
   int i;
 
   blinkcount = 0;
@@ -963,121 +905,18 @@ jvideo::jvideo (SDL_Window *window, jmem &program_arg, jmem &kanjirom_arg)
   gma_reset = true;
   vsynccount = 0;
   ex_convcount = 0;
-
-  jvideo::window = window;
-  mypalette = SDL_AllocPalette (256);
-  mysurface = SDL_CreateRGBSurface (0, SURFACE_WIDTH, SURFACE_HEIGHT, 8, 0, 0,
-				    0, 0);
-  SDL_SetSurfacePalette (mysurface, mypalette);
-  myexsurface = SDL_CreateRGBSurface (0, EX_SURFACE_WIDTH, EX_SURFACE_HEIGHT,
-				      8, 0, 0, 0, 0);
-  SDL_SetSurfacePalette (myexsurface, mypalette);
-  SDL_SetPaletteColors (mypalette, cl, 0, 16);
-  // SDL_BlitScaled seems not working with 8bit depth surface so
-  // create another 32bit depth surface and copy twice to blit :-)
-  mysurface2 = SDL_CreateRGBSurface (0, SURFACE_WIDTH, SURFACE_HEIGHT, 32, 0,
-				     0, 0, 0);
-}
-
-static void
-set_rect (int &srcstart, int &srcsize, int &dststart, int &dstsize, int start,
-	  int minsize, int border)
-{
-  srcstart = 0;
-  dststart = 0;
-  if (srcsize <= dstsize)	// Window is larger than buffer
-    {
-      // Draw buffer at center of the window
-      dststart = (dstsize - srcsize) / 2;
-      dstsize = srcsize;
-    }
-  else if (srcsize > dstsize)	// Window is smaller than buffer
-    {
-      // Auto adjust the display position
-      if (dstsize < start + minsize + border)
-	srcstart = start + minsize + border - dstsize;
-      if (srcstart > start - border)
-	srcstart = start + (minsize - dstsize) / 2;
-      if (srcstart < 0)
-	srcstart = 0;
-      if (srcstart + dstsize > srcsize)
-	srcstart = srcsize - dstsize;
-      srcsize = dstsize;
-    }
 }
 
 void
 jvideo::draw ()
 {
-  SDL_Surface *surface = SDL_GetWindowSurface (window);
-  SDL_Rect dstrect;
-  dstrect.w = surface->w;
-  dstrect.h = surface->h;
-  if (dstrect.w == SURFACE_WIDTH && dstrect.h == SURFACE_HEIGHT * 2)
-    {
-      clear_surface_if_necessary (surface, 0, 0, dstrect.w, dstrect.h);
-      SDL_BlitSurface (mysurface, NULL, mysurface2, NULL);
-      SDL_BlitScaled (mysurface2, NULL, surface, NULL);
-    }
-  else
-    {
-      SDL_Rect srcrect;
-      srcrect.w = SURFACE_WIDTH;
-      srcrect.h = SURFACE_HEIGHT * 2;
-      set_rect (srcrect.x, srcrect.w, dstrect.x, dstrect.w, disp_start_x,
-		640, 16);
-      set_rect (srcrect.y, srcrect.h, dstrect.y, dstrect.h, disp_start_y * 2,
-		400, 32);
-      srcrect.y /= 2;
-      srcrect.h /= 2;
-      clear_surface_if_necessary (surface, dstrect.x, dstrect.y, dstrect.w,
-				  dstrect.h);
-      SDL_BlitSurface (mysurface, &srcrect, mysurface2, &srcrect);
-      SDL_BlitScaled (mysurface2, &srcrect, surface, &dstrect);
-    }
-  SDL_UpdateWindowSurface (window);
+  videohw.draw (640, 400, disp_start_x, disp_start_y * 2);
 }
 
 void
 jvideo::ex_draw ()
 {
-  SDL_Surface *surface = SDL_GetWindowSurface (window);
-  SDL_Rect dstrect;
-  dstrect.w = surface->w;
-  dstrect.h = surface->h;
-  if (dstrect.w == EX_SURFACE_WIDTH && dstrect.h == EX_SURFACE_HEIGHT)
-    {
-      clear_surface_if_necessary (surface, 0, 0, dstrect.w, dstrect.h);
-      SDL_BlitSurface (myexsurface, NULL, surface, NULL);
-    }
-  else
-    {
-      SDL_Rect srcrect;
-      srcrect.w = EX_SURFACE_WIDTH;
-      srcrect.h = EX_SURFACE_HEIGHT;
-      set_rect (srcrect.x, srcrect.w, dstrect.x, dstrect.w, disp_start_x,
-		720, 16);
-      set_rect (srcrect.y, srcrect.h, dstrect.y, dstrect.h, disp_start_y,
-		525, 16);
-      clear_surface_if_necessary (surface, dstrect.x, dstrect.y, dstrect.w,
-				  dstrect.h);
-      SDL_BlitSurface (myexsurface, &srcrect, surface, &dstrect);
-    }
-  SDL_UpdateWindowSurface (window);
-}
-
-void
-jvideo::clear_surface_if_necessary (SDL_Surface *surface, int x, int y, int w,
-				    int h)
-{
-  if (x != prev_x || y != prev_y || w != prev_w || h != prev_h)
-    {
-      SDL_FillRect (surface, NULL, SDL_MapRGB (surface->format, 0, 0, 0));
-      prev_x = x;
-      prev_y = y;
-      prev_w = w;
-      prev_h = h;
-    }
+  videohw.draw (720, 525, disp_start_x, disp_start_y);
 }
 
 ////////////////////////////////////////////////////////////

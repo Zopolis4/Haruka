@@ -31,6 +31,7 @@
 #include "jbus.hh"
 #include "jio1ff.hh"
 #include "jrtc.hh"
+#include "sdlvideo.hh"
 
 using std::cerr;
 using std::endl;
@@ -621,7 +622,8 @@ sdlmainthread (void *p)
 	}
 
       sdlsound soundclass (11025, 1024 * 4);
-      jvideo videoclass (md->window, program, kanjirom);
+      sdlvideo videohw (md->window);
+      jvideo videoclass (videohw, program, kanjirom);
       jjoy joy;
       stdfdc fdc (videoclass);
       jrtc rtc;
