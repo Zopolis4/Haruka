@@ -158,6 +158,7 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
 sdlsound::~sdlsound ()
 {
   SDL_CloseAudio ();
+  SDL_DestroySemaphore (semaphore);
   delete [] localbuf;
 }
 
