@@ -68,38 +68,38 @@ sdlsound::selecttimer1in (bool timer0out)
 void
 sdlsound::audiocallback (unsigned char *stream, int len)
 {
-  short *buf = (short *)stream;
-  bool unlock = false;
-
-  if (fillsize == buffersize)
-    unlock = true;
-  if (fillsize > buffersize)
+  int size = SDL_AtomicGet (&fillsize);
+  if (!playing && size >= samples * 2)
+    playing = true;
+  if (playing)
     {
-      cout << "Audio buffer overflow" << "\tfillsize " << fillsize
-	   << " buffersize " << buffersize << " len " << len << endl;
-      copyoffset = (copyoffset + fillsize - buffersize) % buffersize;
-      fillsize = buffersize;
-    }
-  while (fillsize > 0 && len >= 2)
-    {
-      *buf++ = localbuf[copyoffset++];
-      if (copyoffset >= buffersize)
-	copyoffset = 0;
-      len -= 2;
-      fillsize--;
-    }
-  if (len > 0)
-    {
-      cout << "Audio buffer underflow" << "\tfillsize " << fillsize
-	   << " buffersize " << buffersize << " len " << len << endl;
-      while (len >= 2)
+      const int bufsize = buffersize;
+      short *buf = (short *)stream;
+      len /= 2;
+      while (len > 0 && size > 0)
 	{
-	  *buf++ = 0;
-	  len -= 2;
+	  const unsigned int off = copyoffset;
+	  if (size > len)
+	    size = len;
+	  for (int i = 0; i < size; i++)
+	    buf[i] = localbuf[(off + i) % bufsize];
+	  copyoffset = (off + size) % bufsize;
+	  buf += size;
+	  len -= size;
+	  int oldsize = SDL_AtomicAdd (&fillsize, -size);
+	  if (oldsize == bufsize)
+	    SDL_SemPost (semaphore);
+	  size = oldsize - size;
+	}
+      if (len > 0)
+	{
+	  cerr << "Audio buffer underflow" << "\tbuffersize " << buffersize
+	       << " len " << len << endl;
+	  for (int i = 0; i < len; i++)
+	    buf[i] = 0;
+	  playing = false;
 	}
     }
-  if (unlock)
-    SDL_SemPost (semaphore);
 }
 
 static void
@@ -134,8 +134,10 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
   // Initialize variables used by callback handler
   copyoffset = 0;
   filloffset = 0;
-  fillsize = 0;
-  semaphore = SDL_CreateSemaphore (1);
+  samples = buffersize / 8;
+  SDL_AtomicSet (&fillsize, 0);
+  playing = false;
+  semaphore = SDL_CreateSemaphore (0);
 
   // Initialize slow down information
   hurry = false;
@@ -144,7 +146,7 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
   fmt.freq = rate;
   fmt.format = AUDIO_S16SYS;
   fmt.channels = 1;
-  fmt.samples = buffersize / 8;
+  fmt.samples = samples;
   fmt.callback = sdlaudiocallback;
   fmt.userdata = (void *)this;
   if (SDL_OpenAudio (&fmt, NULL) < 0)
@@ -231,11 +233,7 @@ sdlsound::tick_genaudio ()
     filloffset = 0;
   else
     filloffset++;
-  SDL_LockAudio ();
-  fillsize++;
-  bool bufferfull = (fillsize == buffersize) ? true : false;
-  SDL_UnlockAudio ();
-  if (bufferfull)
+  if (SDL_AtomicAdd (&fillsize, 1) + 1u == buffersize)
     SDL_SemWait (semaphore);
 }
 
@@ -281,7 +279,7 @@ sdlsound::clk (int clockcount)
 	  tick_genaudio ();
 	}
     }
-  if (fillsize > buffersize / 2)
+  if (SDL_AtomicGet (&fillsize) * 2u > buffersize)
     hurry = false;
   else
     hurry = true;

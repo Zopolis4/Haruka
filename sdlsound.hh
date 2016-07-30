@@ -81,7 +81,9 @@ private:
   unsigned int clksum;
   unsigned int copyoffset;
   unsigned int filloffset;
-  unsigned int fillsize;
+  int samples;
+  SDL_atomic_t fillsize;
+  bool playing;
   j8253 pit;
   unsigned int pb;
   bool timer1sel;
