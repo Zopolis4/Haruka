@@ -94,11 +94,15 @@ private:
   unsigned int soundclk;
   SDL_sem *semaphore;
   bool hurry;
+  SDL_TimerID timer_id;
+  SDL_sem *closing;
   void tick_pit ();
   void tick_sound ();
   void tick_genaudio ();
+  void audiocallback (Uint8 *stream, int len);
+  static Uint32 sdltimercallback (Uint32 interval, void *param);
+  static void sdlaudiocallback (void *data, Uint8 *stream, int len);
 public:
-  void audiocallback (unsigned char *stream, int len);
   void iowrite (unsigned char data);
   void clk (int clockcount);
   sdlsound (unsigned int rate, unsigned int buffersize);

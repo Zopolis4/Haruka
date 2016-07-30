@@ -66,7 +66,7 @@ sdlsound::selecttimer1in (bool timer0out)
 }
 
 void
-sdlsound::audiocallback (unsigned char *stream, int len)
+sdlsound::audiocallback (Uint8 *stream, int len)
 {
   int size = SDL_AtomicGet (&fillsize);
   if (!playing && size >= samples * 2)
@@ -102,12 +102,27 @@ sdlsound::audiocallback (unsigned char *stream, int len)
     }
 }
 
-static void
-sdlaudiocallback (void *data, Uint8 *stream, int len)
+void
+sdlsound::sdlaudiocallback (void *data, Uint8 *stream, int len)
 {
-  sdlsound *p = (sdlsound *)data;
+  sdlsound *p = static_cast<sdlsound *> (data);
 
-  p->audiocallback ((unsigned char *)stream, len);
+  p->audiocallback (stream, len);
+}
+
+Uint32
+sdlsound::sdltimercallback (Uint32 interval, void *param)
+{
+  sdlsound *p = static_cast<sdlsound *> (param);
+  Uint8 buf[p->samples * 2];
+
+  p->audiocallback (buf, sizeof buf);
+  if (p->closing)
+    {
+      SDL_SemPost (p->closing);
+      return 0;
+    }
+  return interval;
 }
 
 sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
@@ -143,6 +158,7 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
   hurry = false;
   
   // Open SDL audio
+  timer_id = 0;
   fmt.freq = rate;
   fmt.format = AUDIO_S16SYS;
   fmt.channels = 1;
@@ -152,6 +168,12 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
   if (SDL_OpenAudio (&fmt, NULL) < 0)
     {
       cerr << "SDL_OpenAudio failed. Continue without audio." << endl;
+      sdlsound::rate = 10000;
+      samples = 100;
+      closing = NULL;
+      timer_id = SDL_AddTimer (10, sdltimercallback, this);
+      if (!timer_id)
+	cerr << "SDL_AddTimer failed." << endl;
       return;
     }
   SDL_PauseAudio (0);
@@ -159,7 +181,14 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
 
 sdlsound::~sdlsound ()
 {
-  SDL_CloseAudio ();
+  if (timer_id)
+    {
+      closing = SDL_CreateSemaphore (0);
+      SDL_SemWait (closing);
+      SDL_DestroySemaphore (closing);
+    }
+  else
+    SDL_CloseAudio ();
   SDL_DestroySemaphore (semaphore);
   delete [] localbuf;
 }
