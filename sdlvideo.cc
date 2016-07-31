@@ -20,6 +20,21 @@
 #include "jvideo.hh"
 #include "sdlvideo.hh"
 
+sdlvideo::surface::surface (SDL_Palette *mypalette)
+{
+  mysurface = SDL_CreateRGBSurface (0, WIDTH, HEIGHT, 8, 0, 0, 0, 0);
+  SDL_SetSurfacePalette (mysurface, mypalette);
+  if (SDL_MUSTLOCK (mysurface))
+    SDL_LockSurface (mysurface);
+}
+
+sdlvideo::surface::~surface ()
+{
+  if (SDL_MUSTLOCK (mysurface))
+    SDL_UnlockSurface (mysurface);
+  SDL_FreeSurface (mysurface);
+}
+
 void
 sdlvideo::clear_surface_if_necessary (SDL_Surface *surface, int x, int y,
 				      int w, int h)
@@ -61,52 +76,9 @@ sdlvideo::set_rect (int &srcstart, int &srcsize, int &dststart, int &dstsize,
     }
 }
 
-sdlvideo::sdlvideo (SDL_Window *window) : window (window)
-{
-  static const SDL_Color cl[16] =
-    {
-      {r: 0x00, g: 0x00, b: 0x00},
-      {r: 0x00, g: 0x00, b: 0xdd},
-      {r: 0x00, g: 0xdd, b: 0x00},
-      {r: 0x00, g: 0xdd, b: 0xdd},
-      {r: 0xdd, g: 0x00, b: 0x00},
-      {r: 0xdd, g: 0x00, b: 0xdd},
-      {r: 0xdd, g: 0xdd, b: 0x00},
-      {r: 0xdd, g: 0xdd, b: 0xdd},
-      {r: 0x88, g: 0x88, b: 0x88},
-      {r: 0x88, g: 0x88, b: 0xff},
-      {r: 0x88, g: 0xff, b: 0x88},
-      {r: 0x88, g: 0xff, b: 0xff},
-      {r: 0xff, g: 0x88, b: 0x88},
-      {r: 0xff, g: 0x88, b: 0xff},
-      {r: 0xff, g: 0xff, b: 0x88},
-      {r: 0xff, g: 0xff, b: 0xff},
-    };
-  mypalette = SDL_AllocPalette (256);
-  mysurface = SDL_CreateRGBSurface (0, WIDTH, HEIGHT, 8, 0, 0, 0, 0);
-  SDL_SetSurfacePalette (mysurface, mypalette);
-  SDL_SetPaletteColors (mypalette, cl, 0, 16);
-  if (SDL_MUSTLOCK (mysurface))
-    SDL_LockSurface (mysurface);
-}
-
-sdlvideo::~sdlvideo ()
-{
-  if (SDL_MUSTLOCK (mysurface))
-    SDL_UnlockSurface (mysurface);
-  SDL_FreeSurface (mysurface);
-  SDL_FreePalette (mypalette);
-}
-
-unsigned char *
-sdlvideo::get_pointer (int x, int y)
-{
-  unsigned char *pixels = static_cast<unsigned char *> (mysurface->pixels);
-  return pixels + y * mysurface->pitch + x;
-}
-
 void
-sdlvideo::draw (int width, int height, int left, int top)
+sdlvideo::draw_real (SDL_Surface *mysurface, int width, int height, int left,
+		     int top)
 {
   if (SDL_MUSTLOCK (mysurface))
     SDL_UnlockSurface (mysurface);
@@ -133,4 +105,104 @@ sdlvideo::draw (int width, int height, int left, int top)
   SDL_UpdateWindowSurface (window);
   if (SDL_MUSTLOCK (mysurface))
     SDL_LockSurface (mysurface);
+}
+
+int
+sdlvideo::sdlvideothread_c (void *p)
+{
+  static_cast<sdlvideo *> (p)->sdlvideothread ();
+  return 0;
+}
+
+void
+sdlvideo::sdlvideothread ()
+{
+  unsigned int c = 0;
+  for (;;)
+    {
+      SDL_SemWait (producer);
+      if (SDL_AtomicGet (&thread_exit_flag))
+	{
+	  SDL_SemPost (consumer);
+	  break;
+	}
+      draw_real (s[c]->mysurface, s[c]->width, s[c]->height, s[c]->left,
+		 s[c]->top);
+      SDL_SemPost (consumer);
+      c = (c + 1) % NSURFACES;
+    }
+  SDL_AtomicSet (&thread_exit_flag, 2);
+}
+
+sdlvideo::sdlvideo (SDL_Window *window) : window (window)
+{
+  static const SDL_Color cl[16] =
+    {
+      {r: 0x00, g: 0x00, b: 0x00},
+      {r: 0x00, g: 0x00, b: 0xdd},
+      {r: 0x00, g: 0xdd, b: 0x00},
+      {r: 0x00, g: 0xdd, b: 0xdd},
+      {r: 0xdd, g: 0x00, b: 0x00},
+      {r: 0xdd, g: 0x00, b: 0xdd},
+      {r: 0xdd, g: 0xdd, b: 0x00},
+      {r: 0xdd, g: 0xdd, b: 0xdd},
+      {r: 0x88, g: 0x88, b: 0x88},
+      {r: 0x88, g: 0x88, b: 0xff},
+      {r: 0x88, g: 0xff, b: 0x88},
+      {r: 0x88, g: 0xff, b: 0xff},
+      {r: 0xff, g: 0x88, b: 0x88},
+      {r: 0xff, g: 0x88, b: 0xff},
+      {r: 0xff, g: 0xff, b: 0x88},
+      {r: 0xff, g: 0xff, b: 0xff},
+    };
+  producer = SDL_CreateSemaphore (0);
+  consumer = SDL_CreateSemaphore (0);
+  p = 0;
+  SDL_AtomicSet (&thread_exit_flag, 0);
+  thread = SDL_CreateThread (sdlvideothread_c, "video", this);
+  mypalette = SDL_AllocPalette (256);
+  SDL_SetPaletteColors (mypalette, cl, 0, 16);
+  for (unsigned int i = 0; i < NSURFACES; i++)
+    {
+      s[i] = new surface (mypalette);
+      SDL_SemPost (consumer);
+    }
+  SDL_SemWait (consumer);
+}
+
+sdlvideo::~sdlvideo ()
+{
+  SDL_AtomicSet (&thread_exit_flag, 1);
+  while (SDL_AtomicGet (&thread_exit_flag) == 1)
+    {
+      SDL_SemPost (producer);
+      SDL_SemWait (consumer);
+    }
+  int status;
+  SDL_WaitThread (thread, &status);
+  for (unsigned int i = 0; i < NSURFACES; i++)
+    delete s[i];
+  SDL_FreePalette (mypalette);
+  SDL_DestroySemaphore (consumer);
+  SDL_DestroySemaphore (producer);
+}
+
+unsigned char *
+sdlvideo::get_pointer (int x, int y)
+{
+  SDL_Surface *mysurface = s[p]->mysurface;
+  unsigned char *pixels = static_cast<unsigned char *> (mysurface->pixels);
+  return pixels + y * mysurface->pitch + x;
+}
+
+void
+sdlvideo::draw (int width, int height, int left, int top)
+{
+  s[p]->width = width;
+  s[p]->height = height;
+  s[p]->left = left;
+  s[p]->top = top;
+  SDL_SemPost (producer);
+  p = (p + 1) % NSURFACES;
+  SDL_SemWait (consumer);
 }
