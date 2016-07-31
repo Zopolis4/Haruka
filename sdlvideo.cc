@@ -143,12 +143,12 @@ sdlvideo::sync_clock (unsigned int clkcount)
   unsigned int audio_time;
   do
     {
-      while (SDL_AtomicSet (&sync_updating, 2))
+      while (!SDL_AtomicCAS (&sync_updating, 0, 2))
 	SDL_Delay (1);
       audio_clkcount = sync_audio_clkcount;
       audio_time = sync_audio_time;
     }
-  while (SDL_AtomicSet (&sync_updating, 0) != 2);
+  while (!SDL_AtomicCAS (&sync_updating, 2, 0));
   if (clkcount >= audio_clkcount)
     {
       clkcount -= audio_clkcount;
