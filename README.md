@@ -66,7 +66,7 @@ Run 5511emu.
 ```
 #!sh
 
-./5511emu [-w] [-j] [-o] [-e] [-f] [-m RAM-size] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
+./5511emu [-w] [-j] [-o] [-e] [-f] [-s] [-m RAM-size] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options ###
@@ -76,6 +76,7 @@ Run 5511emu.
 * -o: Original PCjr mode
 * -e: Set window size for extended video mode
 * -f: Fast mode - CPU 7.2MHz, like JX-5 extended (kakucho) mode
+* -s: No vsync. With this option, screen tearing occurs but performance may be better than default. Useful for slow computers.
 * -m 64: RAM size 64KiB (no memory expansion)
 * -m 128: RAM size 128KiB (64KB memory expansion)
 * -m 256: RAM size 256KiB (64KB memory expansion + 1 x 128KB memory expansion)

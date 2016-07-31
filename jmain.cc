@@ -870,18 +870,8 @@ main (int argc, char **argv)
   maindata md;
   int i, j;
 
-  if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO |
-		SDL_INIT_JOYSTICK) < 0)
-    {
-      cerr << "SDL_Init failed: " << SDL_GetError () << endl;
-      return 1;
-    }
-
-  atexit(SDL_Quit);
-
-  md.window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED,
-				SDL_WINDOWPOS_UNDEFINED, 672, 432,
-				SDL_WINDOW_RESIZABLE);
+  bool exsize = false;
+  bool novsync = false;
   md.endflag = 0;
   md.resetflag = 1;
   md.fdc = 0;
@@ -903,9 +893,11 @@ main (int argc, char **argv)
       else if (strcmp (argv[i], "-o") == 0)
 	md.origpcjrflag = true;
       else if (strcmp (argv[i], "-e") == 0)
-	SDL_SetWindowSize (md.window, 752, 557);
+	exsize = true;
       else if (strcmp (argv[i], "-f") == 0)
 	md.fastflag = true;
+      else if (strcmp (argv[i], "-s") == 0)
+	novsync = true;
       else if (strcmp (argv[i], "-m") == 0 && i + 1 < argc)
 	memsize = argv[++i];
       else if (strcmp (argv[i], "-d0") == 0 && i + 1 < argc)
@@ -950,6 +942,21 @@ main (int argc, char **argv)
       else
 	md.memsize = 512;
     }
+  if (!novsync)
+    {
+      SDL_SetHint (SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
+      SDL_SetHint (SDL_HINT_RENDER_VSYNC, "1");
+    }
+  if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO |
+		SDL_INIT_JOYSTICK) < 0)
+    {
+      cerr << "SDL_Init failed: " << SDL_GetError () << endl;
+      return 1;
+    }
+  atexit(SDL_Quit);
+  md.window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED,
+				SDL_WINDOWPOS_UNDEFINED, exsize ? 752 : 672,
+				exsize ? 557 : 432, SDL_WINDOW_RESIZABLE);
 
   jkey keybd;
   jevent event (keybd);
