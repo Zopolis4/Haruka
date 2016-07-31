@@ -22,6 +22,8 @@
 #include <iostream>
 
 #include "SDL.h"
+#include "jmem.hh"
+#include "jvideo.hh"
 #include "sdlsound.hh"
 
 using std::cout;
@@ -83,7 +85,10 @@ sdlsound::audiocallback (Uint8 *stream, int len)
 	    size = len;
 	  for (int i = 0; i < size; i++)
 	    buf[i] = localbuf[(off + i) % bufsize];
-	  copyoffset = (off + size) % bufsize;
+	  const unsigned int newoff = (off + size) % bufsize;
+	  if (off + size != newoff)
+	    videohw.sync_audio (clkcount_at_buf0);
+	  copyoffset = newoff;
 	  buf += size;
 	  len -= size;
 	  int oldsize = SDL_AtomicAdd (&fillsize, -size);
@@ -125,7 +130,9 @@ sdlsound::sdltimercallback (Uint32 interval, void *param)
   return interval;
 }
 
-sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
+sdlsound::sdlsound (unsigned int rate, unsigned int buffersize,
+		    unsigned int samples, jvideo::hw &videohw)
+  : samples (samples), videohw (videohw)
 {
   unsigned int i;
   SDL_AudioSpec fmt;
@@ -138,6 +145,7 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
   timerclk = 0;
   soundclk = 0;
   clksum = 0;
+  clkcount = 0;
 
   // Initialize audio buffer
   sdlsound::rate = rate;
@@ -149,14 +157,11 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize)
   // Initialize variables used by callback handler
   copyoffset = 0;
   filloffset = 0;
-  samples = buffersize / 8;
   SDL_AtomicSet (&fillsize, 0);
   playing = false;
   semaphore = SDL_CreateSemaphore (0);
+  clkcount_at_buf0 = 0;
 
-  // Initialize slow down information
-  hurry = false;
-  
   // Open SDL audio
   timer_id = 0;
   fmt.freq = rate;
@@ -253,6 +258,8 @@ sdlsound::tick_genaudio ()
       speakerout = soundtmp - 8192;
       break;
     }
+  if (!filloffset)
+    clkcount_at_buf0 = clkcount;
   localbuf[filloffset] = speakerin + speakerout;
   outbeep0 = 0;
   outbeep1 = 0;
@@ -283,6 +290,7 @@ sdlsound::clk (int clockcount)
   for (int i = 0; i < t; i++)
     tick_sound ();
   clksum += rate * n;
+  clkcount += n;
   // Slow loop...
   for (int i = n; i < clockcount; i++)
     {
@@ -307,11 +315,8 @@ sdlsound::clk (int clockcount)
 	  clksum -= 14318180;
 	  tick_genaudio ();
 	}
+      clkcount++;
     }
-  if (SDL_AtomicGet (&fillsize) * 2u > buffersize)
-    hurry = false;
-  else
-    hurry = true;
 }
 
 ////////////////////////////////////////////////////////////

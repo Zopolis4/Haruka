@@ -69,8 +69,8 @@ private:
   void convsub (int readtop1, int readtop2, int enable1, int enable2, int si,
 		int len, unsigned char *p, bool disp);
   void ex_convsub (int enable, int len, unsigned char *p, bool disp);
-  void conv (int clockcount, bool drawflag);
-  void ex_conv (int clockcount, bool drawflag);
+  void conv (int clockcount);
+  void ex_conv (int clockcount);
   void convtick (bool disp);
   void ex_draw ();
   void draw ();
@@ -85,6 +85,7 @@ private:
   unsigned int ex_convcount;
   unsigned int ex_framecount;
   bool ex_prev_cursor;
+  unsigned int clkcount;
 protected:
   int mode1[2], palettemask[2], mode2[2];
   unsigned char *drawdata;
@@ -115,7 +116,7 @@ public:
   void out3d5 (unsigned char data);
   unsigned int in3dd ();
   void out3dd (unsigned char data);
-  void clk (int clockcount, bool drawflag);
+  void clk (int clockcount);
   //virtual void draw () = 0;
   bool pcjrmem () { return (mode2[1] & 16) ? true : false; }
   //virtual void floppyaccess (int n);
@@ -136,7 +137,9 @@ public:
     static const int HEIGHT = EX_SURFACE_HEIGHT;
   public:
     virtual unsigned char *get_pointer (int x, int y) = 0;
-    virtual void draw (int width, int height, int left, int top) = 0;
+    virtual void draw (int width, int height, int left, int top,
+		       unsigned int clkcount) = 0;
+    virtual void sync_audio (unsigned int clkcount) = 0;
   };
 private:
   hw &videohw;

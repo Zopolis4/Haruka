@@ -33,7 +33,7 @@ extern "C"
 }
 
 void
-jvideo::clk (int clockcount, bool drawflag)
+jvideo::clk (int clockcount)
 {
   // 14.31818 MHz  59.92 Hz  15.700 KHz
   // +------------------------------------+ -------
@@ -56,7 +56,7 @@ jvideo::clk (int clockcount, bool drawflag)
   // 912*n+136 ... 912*n+776  dots (n = 31 ... 230)
   // 912*n+776 ... 912*n+844  dummy (n = 31 ... 230)
   // 912*231-68 ... 912*262  dummy
-  conv (clockcount, drawflag);
+  conv (clockcount);
   blinkcount += clockcount;
   while (blinkcount >= (14318180 / 2))
     blinkcount -= (14318180 / 2);
@@ -681,13 +681,14 @@ jvideo::ex_convsub (int enable, int len, unsigned char *p, bool disp)
 }
 
 void
-jvideo::ex_conv (int clockcount, bool drawflag)
+jvideo::ex_conv (int clockcount)
 {
   const bool enable = !!(ex_reg2 & 0x8);
   const unsigned int len = ex_reg2 & 0x2 ? 16 : 9;
   while (clockcount > 0)
     {
       const int clk = clockcount > 16 ? 16 : clockcount;
+      clkcount += clk;
       clockcount -= clk;
       // FIXME: Ex-video is 20MHz interlace but this implementation is
       // 40MHz progressive
@@ -745,10 +746,9 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 		{
 		  if (draw_x < 0)
 		    draw_x = 0;
-		  if (drawflag)
-		    for (; draw_y < EX_SURFACE_HEIGHT; draw_y++, draw_x = 0)
-		      for (; draw_x < EX_SURFACE_WIDTH; draw_x++)
-			*videohw.get_pointer (draw_x, draw_y) = 0;
+		  for (; draw_y < EX_SURFACE_HEIGHT; draw_y++, draw_x = 0)
+		    for (; draw_x < EX_SURFACE_WIDTH; draw_x++)
+		      *videohw.get_pointer (draw_x, draw_y) = 0;
 		  draw_y = EX_VSYNCEND;
 		}
 	      if (!vsynccount)
@@ -771,8 +771,7 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 	    }
 	  if (draw_y >= EX_VSYNCEND)
 	    {
-	      if (drawflag)
-		ex_draw ();
+	      ex_draw ();
 	      draw_x = EX_HSTART;
 	      draw_y = EX_VSTART;
 	    }
@@ -781,11 +780,11 @@ jvideo::ex_conv (int clockcount, bool drawflag)
 }
 
 void
-jvideo::conv (int clockcount, bool drawflag)
+jvideo::conv (int clockcount)
 {
   if (palettemask[1] & 0x80)
     {
-      ex_conv (clockcount, drawflag);
+      ex_conv (clockcount);
       return;
     }
   int readtop1 = (pagereg[0] & 7) * 16384;
@@ -800,6 +799,7 @@ jvideo::conv (int clockcount, bool drawflag)
     return;
   while (convcount >= len)
     {
+      clkcount += len;
       bool hsync = crtc.get_hsync ();
       bool vsync = crtc.get_vsync ();
       bool disp = crtc.get_disp ();
@@ -848,11 +848,10 @@ jvideo::conv (int clockcount, bool drawflag)
 	    {
 	      if (draw_x < 0)
 		draw_x = 0;
-	      if (drawflag)
-		for (; draw_y < SURFACE_HEIGHT; draw_y++, draw_x = 0)
-		  for (; draw_x < SURFACE_WIDTH; draw_x++)
-		    *videohw.get_pointer (draw_x, draw_y * 2 + 0) =
-		      *videohw.get_pointer (draw_x, draw_y * 2 + 1) = 0;
+	      for (; draw_y < SURFACE_HEIGHT; draw_y++, draw_x = 0)
+		for (; draw_x < SURFACE_WIDTH; draw_x++)
+		  *videohw.get_pointer (draw_x, draw_y * 2 + 0) =
+		    *videohw.get_pointer (draw_x, draw_y * 2 + 1) = 0;
 	      draw_y = VSYNCEND;
 	    }
 	  if (!vsynccount)
@@ -875,8 +874,7 @@ jvideo::conv (int clockcount, bool drawflag)
 	}
       if (draw_y >= VSYNCEND)
 	{
-	  if (drawflag)
-	    draw ();
+	  draw ();
 	  draw_x = HSTART;
 	  draw_y = VSTART;
 	}
@@ -905,18 +903,19 @@ jvideo::jvideo (hw &videohw, jmem &program_arg, jmem &kanjirom_arg)
   gma_reset = true;
   vsynccount = 0;
   ex_convcount = 0;
+  clkcount = 0;
 }
 
 void
 jvideo::draw ()
 {
-  videohw.draw (640, 400, disp_start_x, disp_start_y * 2);
+  videohw.draw (640, 400, disp_start_x, disp_start_y * 2, clkcount);
 }
 
 void
 jvideo::ex_draw ()
 {
-  videohw.draw (720, 525, disp_start_x, disp_start_y);
+  videohw.draw (720, 525, disp_start_x, disp_start_y, clkcount);
 }
 
 ////////////////////////////////////////////////////////////

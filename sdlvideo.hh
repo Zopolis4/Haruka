@@ -28,6 +28,7 @@ class sdlvideo : public jvideo::hw
     int height;
     int left;
     int top;
+    unsigned int clkcount;
     surface (SDL_Palette *mypalette);
     ~surface ();
   };
@@ -49,9 +50,14 @@ class sdlvideo : public jvideo::hw
 		  int top);
   static int sdlvideothread_c (void *p);
   void sdlvideothread ();
+  SDL_atomic_t sync_updating;
+  unsigned int sync_audio_clkcount;
+  unsigned int sync_audio_time;
+  bool sync_clock (unsigned int clkcount);
 public:
   sdlvideo (SDL_Window *);
   ~sdlvideo ();
   unsigned char *get_pointer (int x, int y);
-  void draw (int width, int height, int left, int top);
+  void draw (int width, int height, int left, int top, unsigned int clkcount);
+  void sync_audio (unsigned int clkcount);
 };

@@ -93,7 +93,6 @@ private:
   jsn76489a sn76489a;
   unsigned int soundclk;
   SDL_sem *semaphore;
-  bool hurry;
   SDL_TimerID timer_id;
   SDL_sem *closing;
   void tick_pit ();
@@ -102,18 +101,18 @@ private:
   void audiocallback (Uint8 *stream, int len);
   static Uint32 sdltimercallback (Uint32 interval, void *param);
   static void sdlaudiocallback (void *data, Uint8 *stream, int len);
+  jvideo::hw &videohw;
+  unsigned int clkcount;
+  unsigned int clkcount_at_buf0;
 public:
   void iowrite (unsigned char data);
   void clk (int clockcount);
-  sdlsound (unsigned int rate, unsigned int buffersize);
+  sdlsound (unsigned int rate, unsigned int buffersize, unsigned int samples,
+	    jvideo::hw &videohw);
   ~sdlsound ();
   void out8253 (unsigned int addr, unsigned int val);
   unsigned int in8253 (unsigned int addr);
   bool gettimer2out ();
   void set8255b (unsigned int val);
   void selecttimer1in (bool timer0out);
-  bool get_hurry ()
-  {
-    return hurry;
-  }
 };

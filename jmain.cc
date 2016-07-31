@@ -621,8 +621,8 @@ sdlmainthread (void *p)
 	  kanjirom.loadrom (65536 * 3, "FONT_B.ROM", 65536);
 	}
 
-      sdlsound soundclass (11025, 1024 * 4);
       sdlvideo videohw (md->window);
+      sdlsound soundclass (11025, 1024 * 4, 128, videohw);
       jvideo videoclass (videohw, program, kanjirom);
       jjoy joy;
       stdfdc fdc (videoclass);
@@ -688,8 +688,6 @@ sdlmainthread (void *p)
       devexmem d_exmem (bus, mainram, videoclass,
 			md->memsize > 128 ? (md->memsize - 128) * 1024 : 0);
       devrtc d_rtc (bus, rtc);
-      int clk, clk2;
-      bool redraw = false;
 
       md->fdc = &fdc;
       {
@@ -699,7 +697,6 @@ sdlmainthread (void *p)
 	    md->fdc->insert (i, md->fdfile[i]);
       }
 
-      clk = 0;
       // CPU speed choice
       // Normal mode: 14.318MHz / 3 = 4.77MHz
       // Fast mode:   14.318MHz / 2 = 7.16MHz
@@ -844,21 +841,15 @@ sdlmainthread (void *p)
 		    }
 		}
 	    }
-	  clk2 = run8088 () * cpuclkdiv;
-	  videoclass.clk (clk2, redraw);
-	  bool nmiflag = md->keybd->clkin (clk2);
-	  joy.clk (clk2);
-	  soundclass.clk (clk2);
-	  fdc.clk (clk2);
-	  rtc.clk (clk2);
+	  int clk = run8088 () * cpuclkdiv;
+	  videoclass.clk (clk);
+	  bool nmiflag = md->keybd->clkin (clk);
+	  joy.clk (clk);
+	  soundclass.clk (clk);
+	  fdc.clk (clk);
+	  rtc.clk (clk);
 	  if (nmiflag)
 	    nmi8088 (1);
-	  clk += clk2;
-	  if (clk >= 238955)
-	    {
-	      redraw = !soundclass.get_hurry ();
-	      clk -= 238955;
-	    }
 	}
     }
   catch (char *p)

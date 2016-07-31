@@ -126,12 +126,46 @@ sdlvideo::sdlvideothread ()
 	  SDL_SemPost (consumer);
 	  break;
 	}
-      draw_real (s[c]->mysurface, s[c]->width, s[c]->height, s[c]->left,
-		 s[c]->top);
+      if (sync_clock (s[c]->clkcount))
+	draw_real (s[c]->mysurface, s[c]->width, s[c]->height, s[c]->left,
+		   s[c]->top);
       SDL_SemPost (consumer);
       c = (c + 1) % NSURFACES;
     }
   SDL_AtomicSet (&thread_exit_flag, 2);
+}
+
+bool
+sdlvideo::sync_clock (unsigned int clkcount)
+{
+  bool drawflag = false;
+  unsigned int audio_clkcount;
+  unsigned int audio_time;
+  do
+    {
+      while (SDL_AtomicSet (&sync_updating, 2))
+	SDL_Delay (1);
+      audio_clkcount = sync_audio_clkcount;
+      audio_time = sync_audio_time;
+    }
+  while (SDL_AtomicSet (&sync_updating, 0) != 2);
+  if (clkcount >= audio_clkcount)
+    {
+      clkcount -= audio_clkcount;
+      Uint32 time = SDL_GetTicks () - audio_time;
+      // clkcount: target time in clock count
+      // time: current time in ms
+      Uint32 target_time = clkcount / 14318180 * 1000; // Seconds
+      clkcount %= 14318180;
+      target_time += clkcount * 100 / 1431818;   // Milliseconds
+      if (target_time >= time)
+	{
+	  drawflag = true;
+	  if (target_time - time > 40)
+	    SDL_Delay (target_time - time - 40);
+	}
+    }
+  return drawflag;
 }
 
 sdlvideo::sdlvideo (SDL_Window *window) : window (window)
@@ -168,6 +202,9 @@ sdlvideo::sdlvideo (SDL_Window *window) : window (window)
       SDL_SemPost (consumer);
     }
   SDL_SemWait (consumer);
+  SDL_AtomicSet (&sync_updating, 0);
+  sync_audio_clkcount = 0;
+  sync_audio_time = 0;
 }
 
 sdlvideo::~sdlvideo ()
@@ -196,13 +233,25 @@ sdlvideo::get_pointer (int x, int y)
 }
 
 void
-sdlvideo::draw (int width, int height, int left, int top)
+sdlvideo::draw (int width, int height, int left, int top, unsigned int clkcount)
 {
   s[p]->width = width;
   s[p]->height = height;
   s[p]->left = left;
   s[p]->top = top;
+  s[p]->clkcount = clkcount;
   SDL_SemPost (producer);
   p = (p + 1) % NSURFACES;
   SDL_SemWait (consumer);
+}
+
+void
+sdlvideo::sync_audio (unsigned int clkcount)
+{
+  // This is a thread of audio callback. Do not use locking functions
+  // here.
+  SDL_AtomicSet (&sync_updating, 1);
+  sync_audio_clkcount = clkcount;
+  sync_audio_time = SDL_GetTicks ();
+  SDL_AtomicSet (&sync_updating, 0);
 }

@@ -22,7 +22,7 @@ jmain.o : jmain.cc jmem.hh sdlsound.hh jvideo.hh jtype.hh jkey.hh jfdc.hh stdfdc
 jmem.o : jmem.cc jmem.hh
 	$(CXX) -g $(CXXFLAGS) -c jmem.cc
 
-sdlsound.o : sdlsound.cc sdlsound.hh
+sdlsound.o : sdlsound.cc jmem.hh jvideo.hh sdlsound.hh
 
 jvideo.o : jvideo.cc jvideo.hh jtype.hh jmem.hh
 
