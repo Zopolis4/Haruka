@@ -16,6 +16,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include "8259a.hh"
+#include "8088.hh"
+
 //  Copyright (C) 2001  MandrakeSoft S.A.
 //
 //    MandrakeSoft S.A.
@@ -40,9 +43,7 @@
 
 /* 8259A - Programmable Interrupt Controller */
 
-extern void intr8088 (int);
-
-#include <stdio.h>
+#include <cstdio>
 
 #define WARN8259(a) fprintf (stderr, "8259A: WARNING: %s\n", a)
 
@@ -110,8 +111,8 @@ void
 service_master_pic (void)
 {
   t16 unmasked_requests;
-  int irq;
-  t16 isr, max_irq;
+  int irq, max_irq;
+  t16 isr;
 
   if (master_pic.INT)
     return;

@@ -32,55 +32,46 @@
 #include "jio1ff.hh"
 #include "jrtc.hh"
 #include "sdlvideo.hh"
+#include "8088.hh"
+#include "8259a.hh"
 
 using std::cerr;
 using std::endl;
 
-extern "C"
-{
-  extern void reset8088 (void);
-  extern int run8088 (void);
-}
-
 jbus bus;
 
-extern "C"
+t16
+memory_read (t20 addr, int *slow)
 {
-  typedef unsigned int t20;
-  extern void nmi8088 (int);
-  //extern void printip8088 (void);
-  extern t16 read8259 (t16);
-  extern t16 write8259 (t16, t16);
+  *slow = 4;
+  return bus.memory_read (addr, *slow);
+}
 
-  t16
-  memory_read (t20 addr, int *slow)
-  {
-    *slow = 4;
-    return bus.memory_read (addr, *slow);
-  }
-  void
-  memory_write (t20 addr, t16 v, int *slow)
-  {
-    *slow = 4;
-    bus.memory_write (addr, v, *slow);
-  }
-  t16
-  ioport_read (t20 addr, int *slow)
-  {
-    *slow = 6;
-    return bus.ioport_read (addr, *slow);
-  }
-  void
-  ioport_write (t20 addr, t16 v, int *slow)
-  {
-    *slow = 6;
-    bus.ioport_write (addr, v, *slow);
-  }
-  void
-  interrupt_nmi (void)
-  {
-    nmi8088 (0);
-  }
+void
+memory_write (t20 addr, t16 v, int *slow)
+{
+  *slow = 4;
+  bus.memory_write (addr, v, *slow);
+}
+
+t16
+ioport_read (t20 addr, int *slow)
+{
+  *slow = 6;
+  return bus.ioport_read (addr, *slow);
+}
+
+void
+ioport_write (t20 addr, t16 v, int *slow)
+{
+  *slow = 6;
+  bus.ioport_write (addr, v, *slow);
+}
+
+void
+interrupt_nmi (void)
+{
+  nmi8088 (0);
 }
 
 struct maindata

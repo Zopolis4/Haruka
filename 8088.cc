@@ -16,14 +16,13 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-typedef unsigned int t16;
-typedef unsigned int t20;
 typedef unsigned int u32;
 
-#include <stdio.h>
+#include <cstdio>
+#include "8088.hh"
+#include "8259a.hh"
 
-void printip8088(void);
-#define E_WARN(mes) (fprintf (stderr, "8088: WARNING: %s\n", mes), printip8088 ())
+#define E_WARN(mes) (fprintf (stderr, "8088: WARNING: %s\n", mes), printip8088 (), 1)
 
 struct instdbg_data
 {
@@ -206,7 +205,7 @@ case 070: E_CMP (a, b, c); br; \
 #define getsregfrommodrmc2() (ca (1), getsregfrommodrm2 ())
 #define letsregfrommodrm2(a) sregs[(modrm >> 3) & 3] = a
 #define letsregfrommodrmc2(a) (ca (1), letsregfrommodrm2 (a))
-#define E_LEA(a, c) (eamem == 1) ? let##a##c (eaofs) : E_WARN("LEA REG,REG")
+#define E_LEA(a, c) (eamem == 1) ? let##a##c (eaofs), 1 : E_WARN("LEA REG,REG")
 #define E_CBW() letreg2 (0, reg12 (0))
 #define E_CWD() letreg2 (2, (reg2 (0) & 32768) ? 65535 : 0)
 #define E_SAHF() (f_clear (), f_or (reg1 (4)), f_mask (255))
@@ -340,13 +339,6 @@ static t16 pf_q[PREFETCHQUEUELEN], pf_ri, pf_wi, pf_wip, pf_len;
 static t16 biu_data;
 static t20 biu_address;
 static int f_intr, f_nmi;
-
-extern t16 memory_read (t20, int *);
-extern void memory_write (t20, t16, int *);
-extern t16 ioport_read (t20, int *);
-extern void ioport_write (t20, t16, int *);
-extern void interrupt_nmi (void);
-extern t16 interrupt_iac (void);
 
 static t16 reg2 (t16);
 static t16 getrm1 (void);

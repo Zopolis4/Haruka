@@ -22,14 +22,10 @@
 #include "jtype.hh"
 #include "jkey.hh"
 #include "jevent.hh"
+#include "8088.hh"
 
 using std::cerr;
 using std::endl;
-
-extern "C"
-{
-  extern void printip8088 (void);
-}
 
 jevent::jevent (jkey &key) : keybd (key)
 {

@@ -22,15 +22,10 @@
 #include "jtype.hh"
 #include "jmem.hh"
 #include "jvideo.hh"
+#include "8259a.hh"
 
 using std::cerr;
 using std::endl;
-
-extern "C"
-{
-  extern void trigger_irq8259 (unsigned int irq_no);
-  extern void untrigger_irq8259 (unsigned int irq_no);
-}
 
 void
 jvideo::clk (int clockcount)

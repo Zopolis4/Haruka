@@ -20,14 +20,9 @@
 #include "jmem.hh"
 #include "jvideo.hh"
 #include "jfdc.hh"
+#include "8259a.hh"
 #include <cctype>
 #include <cstdio>
-
-extern "C"
-{
-  extern void trigger_irq8259 (unsigned int);
-  extern void untrigger_irq8259 (unsigned int);
-}
 
 static const int WATCHDOG_TIME = 14318180 * 2; // 1-3sec.
 
