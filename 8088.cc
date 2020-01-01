@@ -3148,13 +3148,17 @@ run8088 (void)
 	case 0xbd: E_MOV (bp, imm, 2); ca (4); br;
 	case 0xbe: E_MOV (si, imm, 2); ca (4); br;
 	case 0xbf: E_MOV (di, imm, 2); ca (4); br;
+	case 0xc0:
 	case 0xc2: tmp=E_POP2();letreg2(4,reg2(4)+getimm2());jmpna(tmp);ca(12);br; /* RETN pvalue */
+	case 0xc1:
 	case 0xc3: tmp = E_POP2 (); jmpna (tmp); ca (8); br; /* RETN */
 	case 0xc4: getmodrm (); E_LES (); ca (16); br;
 	case 0xc5: getmodrm (); E_LDS (); ca (16); br;
 	case 0xc6: getmodrm (); E_MOV (rm, imm, 1); ca (eamem ? 10 : 4); br;
 	case 0xc7: getmodrm (); E_MOV (rm, imm, 2); ca (eamem ? 10 : 4); br;
+	case 0xc8:
 	case 0xca: tmp=E_POP2();tmp2=E_POP2();letreg2(4,reg2(4)+getimm2());jmpf(tmp2,tmp);ca (17);br; /* RETF pvalue */
+	case 0xc9:
 	case 0xcb: tmp = E_POP2 (); tmp2 = E_POP2 (); jmpf (tmp2, tmp); ca (18); br; /* RETF */
 	case 0xcc: E_INT (3); ca (52); br;
 	case 0xcd: tmp = getimm1 (); E_INT (tmp); ca (51); br;
