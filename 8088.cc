@@ -3196,6 +3196,7 @@ run8088 (void)
 	case 0xed: tmp=reg2(2);letreg1(0,in(tmp));letreg1(4,in(tmp+1));ca(8);br; /* IN AX,DX */
 	case 0xee: out (reg2 (2), reg1 (0)); ca (8); br; /* OUT DX,AL */
 	case 0xef: tmp=reg2(2);out(tmp,reg1(0));out(tmp+1,reg1(4));ca(8);br; /* OUT DX,AX */
+	case 0xf1:
 	case 0xf0: E_LOCK (); ca(2); br;
 	case 0xf2: E_REPEc (); br;
 	case 0xf3: E_REPNEc (); br;
