@@ -302,8 +302,8 @@ case 020: E_PUSH (ip); jmpna (getrm2 ()); br; /* CALLN */ \
 case 030: if(!eamem)E_WARN("CALL FAR REG");E_PUSH(cs);E_PUSH(ip);tmp=getrm2();eaofs+=2;jmpf(getrm2(),tmp);br;/*CALLF*/ \
 case 040: jmpna (getrm2 ()); br; /* JMP rm16 */ \
 case 050: if(!eamem)E_WARN("JMP FAR REG");tmp=getrm2();eaofs+=2;jmpf(getrm2(),tmp);br;/*JMPF*/ \
+case 070: \
 case 060: E_PUSH (rm2); br; \
-case 070: E_POP (rm2); br; \
 }
 #define E_TABLE5c() switch (modrm & 070) { \
 case 000: E_INC (rm, 2); ca (eamem ? 15 : 3); br; \
@@ -312,8 +312,8 @@ case 020: E_PUSH (ip); tmp = getrm2 (); jmpna (tmp); ca (eamem?21:16); br; /* CA
 case 030: if(!eamem)E_WARN("CALL FAR REG");E_PUSH(cs);E_PUSH(ip);tmp=getrm2();eaofs+=2;tmp2=getrm2();jmpf(tmp2,tmp);ca(37);br;/*CALLF*/ \
 case 040: tmp = getrm2 (); jmpna (tmp); ca (eamem ? 18 : 11); br; /* JMP rm16 */ \
 case 050: if(!eamem)E_WARN("JMP FAR REG");tmp=getrm2();eaofs+=2;tmp2=getrm2();jmpf(tmp2,tmp);ca(24);br;/*JMPF*/ \
+case 070: \
 case 060: E_PUSH (rm); ca (eamem ? 16 : 10); br; \
-case 070: E_POP (rm); ca (eamem ? 17 : 10); br; \
 }
 #define E_WAIT() E_WARN ("WAIT")
 
