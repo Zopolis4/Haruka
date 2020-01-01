@@ -235,6 +235,7 @@ case 070: let##a##c (alu_sar##c (get##a##c (), (b))); br; \
 }
 #define E_AAM(a) (a?letreg1(4,reg1(0)/a),letreg1(0,reg1(0)%a),tmp2=reg1(0),f_or(((tmp2>=128)?128:0)|(tmp2?0:64)|ptable[tmp2]),f_mask(196):E_INT(0))
 #define E_AAD(a) (letreg1(0,reg1(4)*(a)+reg1(0)),letreg1(4,0),tmp2=reg1(0),f_or(((tmp2>=128)?128:0)|(tmp2?0:64)|ptable[tmp2]),f_mask(196))
+#define E_SALC() letreg1 (0, f_get () & 1 ? 255 : 0)
 #define E_XLAT() (easeg=sregs[segover==4?3:segover],eaofs=(reg2(3)+reg1(0))&65535,eamem=1,letreg1(0,getrm1()))
 #define E_ESC() (E_WARN ("ESC"),getmodrm ())
 #define E_LOOPNE(a) (letreg2(1,reg2(1)+65535),(reg2(1)&&!(f_get()&64))?jmpn(a):(void)0)
@@ -3165,7 +3166,7 @@ run8088 (void)
 	case 0xd3: getmodrm (); tmp = reg1 (1); E_TABLE2 (rm, tmp, 2); ca(4*tmp+(eamem?20:8)); br;
 	case 0xd4: tmp = getimm1 (); E_AAM (tmp); ca (83); br;
 	case 0xd5: tmp = getimm1 (); E_AAD (tmp); ca (60); br;
-	case 0xd6: E_XLAT (); ca (11); br;
+	case 0xd6: E_SALC (); ca (4); br;
 	case 0xd7: E_XLAT (); ca (11); br;
 	case 0xd8: E_ESC (); br;
 	case 0xd9: E_ESC (); br;
