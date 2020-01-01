@@ -260,8 +260,8 @@ case 070: let##a##c (alu_sar##c (get##a##c (), (b))); br; \
 #define E_DIV(c) e_div##c ()
 #define E_IDIV(c) e_idiv##c ()
 #define E_TABLE3(c) switch (modrm & 070) { \
+case 010: \
 case 000: E_TEST (rm, imm, c); br; \
-case 010: E_WARN ("TABLE3 010"); br; \
 case 020: E_NOT (rm, c); br; \
 case 030: E_NEG (rm, c); br; \
 case 040: E_MUL (c); br; \
@@ -270,8 +270,8 @@ case 060: E_DIV (c); br; \
 case 070: E_IDIV (c); br; \
 }
 #define E_TABLE3c(c) switch (modrm & 070) { \
+case 010: \
 case 000: E_TEST (rmc, immc, c); ca (2); br; \
-case 010: E_WARN ("TABLE3 010"); br; \
 case 020: E_NOT (rmc, c); ca (1); br; \
 case 030: E_NEG (rmc, c); ca (1); br; \
 case 040: E_MUL (c); ca (eamem ? (c == 1 ? 76 /* ~83 */ : 124 /* ~139 */) : (c == 1 ? 70 /* ~77 */ : 118 /* ~133 */)); br; \
