@@ -3068,21 +3068,37 @@ run8088 (void)
 	case 0x5d: E_POP (bp); ca (8); br;
 	case 0x5e: E_POP (si); ca (8); br;
 	case 0x5f: E_POP (di); ca (8); br;
+	case 0x60:
 	case 0x70: E_JMPIFc (f_get () & 2048); br;
+	case 0x61:
 	case 0x71: E_JMPIFc (!(f_get () & 2048)); br;
+	case 0x62:
 	case 0x72: E_JMPIFc (f_get () & 1); br;
+	case 0x63:
 	case 0x73: E_JMPIFc (!(f_get () & 1)); br;
+	case 0x64:
 	case 0x74: E_JMPIFc (f_get () & 64); br;
+	case 0x65:
 	case 0x75: E_JMPIFc (!(f_get () & 64)); br;
+	case 0x66:
 	case 0x76: E_JMPIFc (f_get () & 65); br;
+	case 0x67:
 	case 0x77: E_JMPIFc (!(f_get () & 65)); br;
+	case 0x68:
 	case 0x78: E_JMPIFc (f_get () & 128); br;
+	case 0x69:
 	case 0x79: E_JMPIFc (!(f_get () & 128)); br;
+	case 0x6a:
 	case 0x7a: E_JMPIFc (f_get () & 4); br;
+	case 0x6b:
 	case 0x7b: E_JMPIFc (!(f_get () & 4)); br;
+	case 0x6c:
 	case 0x7c: E_JMPIFc ((tmp2=f_get()&2176,(tmp2==2048||tmp2==128)));br;
+	case 0x6d:
 	case 0x7d: E_JMPIFc ((tmp2=f_get()&2176,(tmp2==0||tmp2==2176)));br;
+	case 0x6e:
 	case 0x7e: E_JMPIFc ((tmp2=f_get()&2240,(((tmp2&2176)==2048||(tmp2&2176)==128)||(tmp2&64)==64)));br;
+	case 0x6f:
 	case 0x7f: E_JMPIFc ((tmp2=f_get()&2240,(((tmp2&2176)==0||(tmp2&2176)==2176)&&(tmp2&64)==0)));br;
 	case 0x80: getmodrm (); E_TABLE1 (rmc, immc, 1); br;
 	case 0x81: getmodrm (); E_TABLE1 (rmc, immc, 2); br;
