@@ -57,7 +57,12 @@ For example, the original image name is "King's Quest.FDD" and cylinder 0 head 1
 
 ## Build ##
 
-Run make command on GNU/Linux environment.
+```
+mkdir Build
+cd Build
+cmake ..
+make
+```
 
 ## Run ##
 
