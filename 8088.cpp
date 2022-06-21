@@ -4,8 +4,8 @@
 typedef unsigned int u32;
 
 #include <cstdio>
-#include "8088.hh"
-#include "8259a.hh"
+#include "8088.h"
+#include "8259a.h"
 
 #define E_WARN(mes) (fprintf (stderr, "8088: WARNING: %s\n", mes), printip8088 (), 1)
 

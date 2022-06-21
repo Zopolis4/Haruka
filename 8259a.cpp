@@ -1,8 +1,8 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "8259a.hh"
-#include "8088.hh"
+#include "8259a.h"
+#include "8088.h"
 
 //  Copyright (C) 2001  MandrakeSoft S.A.
 //

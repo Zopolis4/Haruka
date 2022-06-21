@@ -7,10 +7,10 @@
 #include <iostream>
 
 #include "SDL.h"
-#include "jmem.hh"
-#include "jvideo.hh"
-#include "sdlsound.hh"
-#include "8259a.hh"
+#include "jmem.h"
+#include "jvideo.h"
+#include "sdlsound.h"
+#include "8259a.h"
 
 using std::cout;
 using std::cerr;

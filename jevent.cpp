@@ -4,10 +4,10 @@
 #include <iostream>
 
 #include "SDL.h"
-#include "jtype.hh"
-#include "jkey.hh"
-#include "jevent.hh"
-#include "8088.hh"
+#include "jtype.h"
+#include "jkey.h"
+#include "jevent.h"
+#include "8088.h"
 
 using std::cerr;
 using std::endl;

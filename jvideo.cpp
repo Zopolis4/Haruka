@@ -4,10 +4,10 @@
 #include <iostream>
 #include <cstring>
 
-#include "jtype.hh"
-#include "jmem.hh"
-#include "jvideo.hh"
-#include "8259a.hh"
+#include "jtype.h"
+#include "jmem.h"
+#include "jvideo.h"
+#include "8259a.h"
 
 using std::cerr;
 using std::endl;

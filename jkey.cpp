@@ -1,8 +1,8 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "jtype.hh"
-#include "jkey.hh"
+#include "jtype.h"
+#include "jkey.h"
 
 jkey::jkey ()
 {
