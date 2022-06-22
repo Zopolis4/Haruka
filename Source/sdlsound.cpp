@@ -9,7 +9,6 @@
 #include <iostream>
 
 #include "8259a.h"
-#include "jmem.h"
 
 using std::cerr;
 using std::cout;

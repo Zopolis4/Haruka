@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "jmem.h"
 #include "jtype.h"
 #include "jvideo.h"
 

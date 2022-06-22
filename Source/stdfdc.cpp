@@ -9,8 +9,6 @@
 #include <iomanip>
 #include <sstream>
 
-#include "jmem.h"
-
 using std::fstream;
 using std::ifstream;
 using std::ios;

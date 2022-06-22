@@ -3,8 +3,6 @@
 
 #include "sdlvideo.h"
 
-#include "jmem.h"
-
 sdlvideo::surface::surface (SDL_Palette* mypalette)
 {
   mysurface = SDL_CreateRGBSurface (0, WIDTH, HEIGHT, 8, 0, 0, 0, 0);
