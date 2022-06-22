@@ -1,6 +1,10 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "SDL.h"
+
+#include "jvideo.h"
+
 class sdlsound
 {
 private:

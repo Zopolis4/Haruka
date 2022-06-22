@@ -1,7 +1,6 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "jbus.h"
 #include "jio1ff.h"
 
 jio1ffstatus::jio1ffstatus (jbus &bus)

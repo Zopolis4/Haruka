@@ -3,9 +3,6 @@
 
 #include <iostream>
 
-#include "SDL.h"
-#include "jtype.h"
-#include "jkey.h"
 #include "jevent.h"
 #include "8088.h"
 

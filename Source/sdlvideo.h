@@ -3,6 +3,8 @@
 
 #include "SDL.h"
 
+#include "jvideo.h"
+
 class sdlvideo : public jvideo::hw
 {
   class surface

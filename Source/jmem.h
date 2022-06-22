@@ -1,6 +1,8 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#pragma once
+
 class jmem
 {
  private:

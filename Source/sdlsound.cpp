@@ -6,9 +6,7 @@
 #include <cstdio>
 #include <iostream>
 
-#include "SDL.h"
 #include "jmem.h"
-#include "jvideo.h"
 #include "sdlsound.h"
 #include "8259a.h"
 

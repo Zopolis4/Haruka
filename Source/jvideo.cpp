@@ -5,7 +5,6 @@
 #include <cstring>
 
 #include "jtype.h"
-#include "jmem.h"
 #include "jvideo.h"
 #include "8259a.h"
 

@@ -1,9 +1,6 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "jtype.h"
-#include "jmem.h"
-#include "jvideo.h"
 #include "jfdc.h"
 #include "8259a.h"
 #include <cctype>
