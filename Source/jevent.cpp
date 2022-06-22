@@ -7,9 +7,6 @@
 
 #include "8088.h"
 
-using std::cerr;
-using std::endl;
-
 jevent::jevent (jkey& key) : keybd (key)
 {
   quit_flag = false;
@@ -26,7 +23,7 @@ void jevent::handle_event()
   r = SDL_WaitEvent (&event);
   if (r != 1)  // If error
   {
-    cerr << "SDL_WaitEvent failed: " << SDL_GetError() << endl;
+    std::cerr << "SDL_WaitEvent failed: " << SDL_GetError() << std::endl;
     return;
   }
   switch (event.type)
@@ -47,11 +44,11 @@ void jevent::handle_event()
       keybd.keyup (tmp);
     break;
   case SDL_MOUSEBUTTONDOWN:
-    cerr << "Mouse down" << endl;
+    std::cerr << "Mouse down" << std::endl;
     printip8088();
     break;
   case SDL_QUIT:
-    cerr << "Quit" << endl;
+    std::cerr << "Quit" << std::endl;
     quit_flag = true;
     break;
   case SDL_USEREVENT:
@@ -73,7 +70,7 @@ void jevent::push_event (int code)
   e.user.data1 = NULL;
   e.user.data2 = NULL;
   if (SDL_PushEvent (&e) != 1)
-    cerr << "SDL_PushEvent failed: " << SDL_GetError() << endl;
+    std::cerr << "SDL_PushEvent failed: " << SDL_GetError() << std::endl;
 }
 
 void jevent::push_quit_event()
@@ -82,7 +79,7 @@ void jevent::push_quit_event()
 
   e.type = SDL_QUIT;
   if (SDL_PushEvent (&e) != 1)
-    cerr << "SDL_PushEvent failed: " << SDL_GetError() << endl;
+    std::cerr << "SDL_PushEvent failed: " << SDL_GetError() << std::endl;
 }
 
 int jevent::keyconv (SDL_Scancode key)

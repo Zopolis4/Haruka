@@ -9,13 +9,6 @@
 #include <iomanip>
 #include <sstream>
 
-using std::fstream;
-using std::ifstream;
-using std::ios;
-using std::ostringstream;
-using std::setfill;
-using std::setw;
-
 stdfdc::stdfdc (jvideo& d) : jfdc (d)
 {
   int i;
@@ -26,7 +19,7 @@ stdfdc::stdfdc (jvideo& d) : jfdc (d)
 
 void stdfdc::read()
 {
-  ifstream f;
+  std::ifstream f;
   bool notready;
   bool sectornotfound;
 
@@ -44,7 +37,7 @@ void stdfdc::read()
         datasize = 0;
       if ((size_t)datasize > sizeof (data))
         datasize = sizeof (data);
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       if (!f)
       {
         notready = true;
@@ -67,13 +60,14 @@ void stdfdc::read()
       if ((size_t)datasize > sizeof (data))
         datasize = sizeof (data);
       {
-        ostringstream s;
+        std::ostringstream s;
 
-        s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0') << (cylinder * 2 + head);
-        f.open (s.str().c_str(), ios::in | ios::binary);
+        s << fdd[drive & 3].filename << '.' << std::setw (3) << std::setfill ('0')
+          << (cylinder * 2 + head);
+        f.open (s.str().c_str(), std::ios::in | std::ios::binary);
         if (!f)
         {
-          f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+          f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
           if (!f)
             notready = true;
           else
@@ -95,7 +89,7 @@ void stdfdc::read()
       datai = 0;
       break;
     default:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       if (!f)
         notready = true;
       else
@@ -135,7 +129,7 @@ void stdfdc::postread()
 
 void stdfdc::preformat()
 {
-  fstream f;
+  std::fstream f;
   bool notready;
   bool writeprotect;
   bool sectornotfound;
@@ -155,14 +149,14 @@ void stdfdc::preformat()
         datasize = 0;
       if ((size_t)datasize > sizeof (data))
         datasize = sizeof (data);
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       f.close();
       if (!f.good())
       {
         notready = true;
         break;
       }
-      f.open (fdd[drive & 3].filename, ios::in | ios ::out | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios ::out | std::ios::binary);
       f.close();
       if (!f.good())
       {
@@ -179,14 +173,15 @@ void stdfdc::preformat()
         datasize = sizeof (data);
       if (0)
       {
-        ostringstream s;
+        std::ostringstream s;
 
-        s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0') << (cylinder * 2 + head);
-        f.open (s.str().c_str(), ios::in | ios::out | ios::binary);
+        s << fdd[drive & 3].filename << '.' << std::setw (3) << std::setfill ('0')
+          << (cylinder * 2 + head);
+        f.open (s.str().c_str(), std::ios::in | std::ios::out | std::ios::binary);
         f.close();
         if (!f.good())
         {
-          f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+          f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
           f.close();
           if (!f.good())
             notready = true;
@@ -198,7 +193,7 @@ void stdfdc::preformat()
       datai = 0;
       break;
     default:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       if (!f)
         notready = true;
       else
@@ -239,7 +234,7 @@ void stdfdc::preformat()
 
 void stdfdc::format()
 {
-  fstream f;
+  std::fstream f;
   bool notready;
   bool writeprotect;
   bool sectornotfound;
@@ -256,14 +251,14 @@ void stdfdc::format()
     switch (bytes_per_sector)
     {
     case 2:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       f.close();
       if (!f.good())
       {
         notready = true;
         break;
       }
-      f.open (fdd[drive & 3].filename, ios::in | ios ::out | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios ::out | std::ios::binary);
       if (!f.good())
       {
         writeprotect = true;
@@ -286,20 +281,20 @@ void stdfdc::format()
       break;
     case 3:
     {
-      ostringstream s;
+      std::ostringstream s;
       unsigned int i;
       char buf[1024];
 
       for (i = 0; i < sectors_per_track * 4; i += 4)
       {
         memset (buf, filler, sizeof (buf));
-        s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0')
+        s << fdd[drive & 3].filename << '.' << std::setw (3) << std::setfill ('0')
           << (data[i] * 2 + data[i + 1]);
-        f.open (s.str().c_str(), ios::in | ios::binary);
+        f.open (s.str().c_str(), std::ios::in | std::ios::binary);
         f.close();
         if (!f.good())
         {
-          f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+          f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
           f.close();
           if (!f.good())
             notready = true;
@@ -307,7 +302,7 @@ void stdfdc::format()
             sectornotfound = true;
           break;
         }
-        f.open (s.str().c_str(), ios::in | ios ::out | ios::binary);
+        f.open (s.str().c_str(), std::ios::in | std::ios ::out | std::ios::binary);
         if (!f.good())
         {
           writeprotect = true;
@@ -325,7 +320,7 @@ void stdfdc::format()
     }
     break;
     default:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       if (!f)
         notready = true;
       else
@@ -375,7 +370,7 @@ void stdfdc::format()
 
 void stdfdc::prewrite()
 {
-  fstream f;
+  std::fstream f;
   bool notready;
   bool writeprotect;
   bool sectornotfound;
@@ -395,14 +390,14 @@ void stdfdc::prewrite()
         datasize = 0;
       if ((size_t)datasize > sizeof (data))
         datasize = sizeof (data);
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       f.close();
       if (!f.good())
       {
         notready = true;
         break;
       }
-      f.open (fdd[drive & 3].filename, ios::in | ios ::out | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios ::out | std::ios::binary);
       f.close();
       if (!f.good())
       {
@@ -418,14 +413,15 @@ void stdfdc::prewrite()
       if ((size_t)datasize > sizeof (data))
         datasize = sizeof (data);
       {
-        ostringstream s;
+        std::ostringstream s;
 
-        s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0') << (cylinder * 2 + head);
-        f.open (s.str().c_str(), ios::in | ios::binary);
+        s << fdd[drive & 3].filename << '.' << std::setw (3) << std::setfill ('0')
+          << (cylinder * 2 + head);
+        f.open (s.str().c_str(), std::ios::in | std::ios::binary);
         f.close();
         if (!f.good())
         {
-          f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+          f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
           f.close();
           if (!f.good())
             notready = true;
@@ -433,7 +429,7 @@ void stdfdc::prewrite()
             sectornotfound = true;
           break;
         }
-        f.open (s.str().c_str(), ios::in | ios ::out | ios::binary);
+        f.open (s.str().c_str(), std::ios::in | std::ios ::out | std::ios::binary);
         f.close();
         if (!f.good())
         {
@@ -444,7 +440,7 @@ void stdfdc::prewrite()
       datai = 0;
       break;
     default:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       if (!f)
         notready = true;
       else
@@ -485,7 +481,7 @@ void stdfdc::prewrite()
 
 void stdfdc::write()
 {
-  fstream f;
+  std::fstream f;
   bool notready;
   bool writeprotect;
   bool sectornotfound;
@@ -502,14 +498,14 @@ void stdfdc::write()
     switch (bytes_per_sector)
     {
     case 2:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       f.close();
       if (!f.good())
       {
         notready = true;
         break;
       }
-      f.open (fdd[drive & 3].filename, ios::in | ios ::out | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios ::out | std::ios::binary);
       if (!f.good())
       {
         writeprotect = true;
@@ -523,14 +519,15 @@ void stdfdc::write()
       break;
     case 3:
     {
-      ostringstream s;
+      std::ostringstream s;
 
-      s << fdd[drive & 3].filename << '.' << setw (3) << setfill ('0') << (cylinder * 2 + head);
-      f.open (s.str().c_str(), ios::in | ios::binary);
+      s << fdd[drive & 3].filename << '.' << std::setw (3) << std::setfill ('0')
+        << (cylinder * 2 + head);
+      f.open (s.str().c_str(), std::ios::in | std::ios::binary);
       f.close();
       if (!f.good())
       {
-        f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+        f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
         f.close();
         if (!f.good())
           notready = true;
@@ -538,7 +535,7 @@ void stdfdc::write()
           sectornotfound = true;
         break;
       }
-      f.open (s.str().c_str(), ios::in | ios ::out | ios::binary);
+      f.open (s.str().c_str(), std::ios::in | std::ios ::out | std::ios::binary);
       if (!f.good())
       {
         writeprotect = true;
@@ -552,7 +549,7 @@ void stdfdc::write()
     }
     break;
     default:
-      f.open (fdd[drive & 3].filename, ios::in | ios::binary);
+      f.open (fdd[drive & 3].filename, std::ios::in | std::ios::binary);
       if (!f)
         notready = true;
       else

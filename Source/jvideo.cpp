@@ -9,9 +9,6 @@
 #include "8259a.h"
 #include "jtype.h"
 
-using std::cerr;
-using std::endl;
-
 void jvideo::clk (int clockcount)
 {
   // 14.31818 MHz  59.92 Hz  15.700 KHz

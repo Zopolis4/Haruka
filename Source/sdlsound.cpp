@@ -10,10 +10,6 @@
 
 #include "8259a.h"
 
-using std::cerr;
-using std::cout;
-using std::endl;
-
 void sdlsound::out8253 (unsigned int addr, unsigned int val)
 {
   pit.out8253 (addr, val);
@@ -70,8 +66,8 @@ void sdlsound::audiocallback (Uint8* stream, int len)
     }
     if (len > 0)
     {
-      cerr << "Audio buffer underflow"
-           << "\tbuffersize " << buffersize << " len " << len << endl;
+      std::cerr << "Audio buffer underflow"
+                << "\tbuffersize " << buffersize << " len " << len << std::endl;
       for (int i = 0; i < len; i++)
         buf[i] = 0;
       playing = false;
@@ -142,13 +138,13 @@ sdlsound::sdlsound (unsigned int rate, unsigned int buffersize, unsigned int sam
   fmt.userdata = (void*)this;
   if (SDL_OpenAudio (&fmt, NULL) < 0)
   {
-    cerr << "SDL_OpenAudio failed. Continue without audio." << endl;
+    std::cerr << "SDL_OpenAudio failed. Continue without audio." << std::endl;
     sdlsound::rate = 10000;
     samples = 100;
     closing = NULL;
     timer_id = SDL_AddTimer (10, sdltimercallback, this);
     if (!timer_id)
-      cerr << "SDL_AddTimer failed." << endl;
+      std::cerr << "SDL_AddTimer failed." << std::endl;
     return;
   }
   SDL_PauseAudio (0);

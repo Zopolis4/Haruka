@@ -5,9 +5,6 @@
 
 #include <fstream>
 
-using std::ifstream;
-using std::ios;
-
 jmem::jmem (int memsize)
 {
   size = memsize;
@@ -16,7 +13,7 @@ jmem::jmem (int memsize)
 
 void jmem::loadrom (int offset, const char* filename, int loadsize)
 {
-  ifstream file (filename, ios::in | ios::binary);
+  std::ifstream file (filename, std::ios::in | std::ios::binary);
 
   if (!file)
     throw ((char*)"can't open");
@@ -27,7 +24,7 @@ void jmem::loadrom (int offset, const char* filename, int loadsize)
 
 int jmem::loadrom2 (int offset, const char* filename, int maxloadsize)
 {
-  ifstream file (filename, ios::in | ios::binary);
+  std::ifstream file (filename, std::ios::in | std::ios::binary);
 
   if (!file)
     throw ((char*)"can't open");

@@ -22,9 +22,6 @@
 #include "sdlvideo.h"
 #include "stdfdc.h"
 
-using std::cerr;
-using std::endl;
-
 jbus bus;
 
 t16 memory_read (t20 addr, int* slow)
@@ -910,7 +907,7 @@ int main (int argc, char** argv)
   }
   if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0)
   {
-    cerr << "SDL_Init failed: " << SDL_GetError() << endl;
+    std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
     return 1;
   }
   atexit (SDL_Quit);
