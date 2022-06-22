@@ -1,6 +1,8 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "sdlsound.h"
+
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -8,7 +10,6 @@
 
 #include "8259a.h"
 #include "jmem.h"
-#include "sdlsound.h"
 
 using std::cerr;
 using std::cout;

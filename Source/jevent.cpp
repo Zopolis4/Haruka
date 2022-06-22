@@ -1,10 +1,11 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "jevent.h"
+
 #include <iostream>
 
 #include "8088.h"
-#include "jevent.h"
 
 using std::cerr;
 using std::endl;

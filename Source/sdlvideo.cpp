@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "sdlvideo.h"
+
 #include "jmem.h"
 
 sdlvideo::surface::surface (SDL_Palette* mypalette)

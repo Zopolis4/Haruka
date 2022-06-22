@@ -1,9 +1,13 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <iomanip>
+#include <iostream>
+
+#include "SDL.h"
+
 #include "8088.h"
 #include "8259a.h"
-#include "SDL.h"
 #include "jbus.h"
 #include "jevent.h"
 #include "jfdc.h"
@@ -17,8 +21,6 @@
 #include "sdlsound.h"
 #include "sdlvideo.h"
 #include "stdfdc.h"
-#include <iomanip>
-#include <iostream>
 
 using std::cerr;
 using std::endl;

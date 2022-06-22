@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "jfdc.h"
-#include "8259a.h"
+
 #include <cctype>
 #include <cstdio>
+
+#include "8259a.h"
 
 static const int WATCHDOG_TIME = 14318180 * 2;  // 1-3sec.
 

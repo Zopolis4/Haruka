@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "jrtc.h"
+
 #include <ctime>
 
 // Real Time Clock (TIMDEV.SYS) support

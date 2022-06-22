@@ -1,12 +1,13 @@
 // Copyright (C) 2000-2016 Hideki EIRAKU
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "jvideo.h"
+
 #include <cstring>
 #include <iostream>
 
 #include "8259a.h"
 #include "jtype.h"
-#include "jvideo.h"
 
 using std::cerr;
 using std::endl;

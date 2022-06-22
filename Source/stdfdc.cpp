@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "stdfdc.h"
-#include "jmem.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+
+#include "jmem.h"
 
 using std::fstream;
 using std::ifstream;
