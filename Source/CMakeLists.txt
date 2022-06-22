@@ -1,7 +1,4 @@
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2)
-
-set(SOURCES
+target_sources(5511emu PRIVATE
   8088.cpp
   8088.h
   8259a.cpp
@@ -33,7 +30,3 @@ set(SOURCES
   stdfdc.cpp
   stdfdc.h
 )
-add_executable(5511emu ${SOURCES})
-
-target_link_libraries(5511emu ${SDL2_LIBRARIES})
-target_include_directories(5511emu PUBLIC ${SDL2_INCLUDE_DIRS})
