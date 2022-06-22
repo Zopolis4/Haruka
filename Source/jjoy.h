@@ -8,18 +8,20 @@ protected:
   {
     int x, y, b;
     bool connected;
+
   public:
-    joystick ();
+    joystick();
     void connect (bool yes);
     void set_state (int xr, int yr, bool b1, bool b2);
-    unsigned char get_value ();
+    unsigned char get_value();
     void clk (int d);
   };
   joystick joy1, joy2;
-  virtual void update_state ();
+  virtual void update_state();
+
 public:
-  jjoy ();
-  unsigned char in201 ();
+  jjoy();
+  unsigned char in201();
   void out201 (unsigned char data);
   void clk (int d);
 };

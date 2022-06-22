@@ -15,7 +15,7 @@
 // Pulse width: 24.2 + 0.011 * R us
 // R: resistance value 0-100 k ohm
 
-jjoy::joystick::joystick ()
+jjoy::joystick::joystick()
 {
   x = 0;
   y = 0;
@@ -23,14 +23,12 @@ jjoy::joystick::joystick ()
   connected = false;
 }
 
-void
-jjoy::joystick::connect (bool yes)
+void jjoy::joystick::connect (bool yes)
 {
   connected = yes;
 }
 
-void
-jjoy::joystick::set_state (int xr, int yr, bool b1, bool b2)
+void jjoy::joystick::set_state (int xr, int yr, bool b1, bool b2)
 {
   unsigned char v = 0;
   if (!b1)
@@ -42,23 +40,21 @@ jjoy::joystick::set_state (int xr, int yr, bool b1, bool b2)
   b = v;
 }
 
-unsigned char
-jjoy::joystick::get_value ()
+unsigned char jjoy::joystick::get_value()
 {
   if (connected)
-    {
-      int d = b;
-      if (x)
-	d |= 1;
-      if (y)
-	d |= 2;
-      return d;
-    }
+  {
+    int d = b;
+    if (x)
+      d |= 1;
+    if (y)
+      d |= 2;
+    return d;
+  }
   return 0x33;
 }
 
-void
-jjoy::joystick::clk (int d)
+void jjoy::joystick::clk (int d)
 {
   if (d > x)
     x = 0;
@@ -70,33 +66,29 @@ jjoy::joystick::clk (int d)
     y -= d;
 }
 
-jjoy::jjoy ()
+jjoy::jjoy()
 {
   joy1.connect (false);
   joy2.connect (false);
 }
 
-void
-jjoy::update_state ()
+void jjoy::update_state()
 {
   joy1.set_state (50, 50, false, false);
   joy2.set_state (50, 50, false, false);
 }
 
-unsigned char
-jjoy::in201 ()
+unsigned char jjoy::in201()
 {
-  return joy1.get_value () | (joy2.get_value () << 2);
+  return joy1.get_value() | (joy2.get_value() << 2);
 }
 
-void
-jjoy::out201 (unsigned char data)
+void jjoy::out201 (unsigned char data)
 {
-  update_state ();
+  update_state();
 }
 
-void
-jjoy::clk (int d)
+void jjoy::clk (int d)
 {
   joy1.clk (d);
   joy2.clk (d);

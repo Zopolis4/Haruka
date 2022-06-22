@@ -25,19 +25,21 @@ private:
       bool togglemsb;
       bool out, gate;
       bool trigger, strobe;
-      void initout ();
-      void reload ();
-      unsigned int decrement ();
+      void initout();
+      void reload();
+      unsigned int decrement();
+
     public:
-      j8253counter ();
+      j8253counter();
       void write_control (unsigned int val);
-      unsigned int read_counter ();
+      unsigned int read_counter();
       void write_counter (unsigned int val);
       void setgate (bool val);
-      inline bool getout ();
-      void tick ();
+      inline bool getout();
+      void tick();
     };
     j8253counter counter[4];
+
   public:
     inline void out8253 (unsigned int addr, unsigned int val);
     inline unsigned int in8253 (unsigned int addr);
@@ -59,14 +61,15 @@ private:
     bool noise_update, noise_white;
     bool outbit[4];
     unsigned int outsum, outcnt;
+
   public:
-    jsn76489a ();
-    void tick ();
-    unsigned int getdata ();
+    jsn76489a();
+    void tick();
+    unsigned int getdata();
     void outb (unsigned int data);
   };
   unsigned int rate, buffersize;
-  signed short *localbuf;
+  signed short* localbuf;
   unsigned int clksum;
   unsigned int copyoffset;
   unsigned int filloffset;
@@ -81,27 +84,27 @@ private:
   unsigned int outbeep0, outbeep1;
   jsn76489a sn76489a;
   unsigned int soundclk;
-  SDL_sem *semaphore;
+  SDL_sem* semaphore;
   SDL_TimerID timer_id;
-  SDL_sem *closing;
-  void tick_pit ();
-  void tick_sound ();
-  void tick_genaudio ();
-  void audiocallback (Uint8 *stream, int len);
-  static Uint32 sdltimercallback (Uint32 interval, void *param);
-  static void sdlaudiocallback (void *data, Uint8 *stream, int len);
-  jvideo::hw &videohw;
+  SDL_sem* closing;
+  void tick_pit();
+  void tick_sound();
+  void tick_genaudio();
+  void audiocallback (Uint8* stream, int len);
+  static Uint32 sdltimercallback (Uint32 interval, void* param);
+  static void sdlaudiocallback (void* data, Uint8* stream, int len);
+  jvideo::hw& videohw;
   unsigned int clkcount;
   unsigned int clkcount_at_buf0;
+
 public:
   void iowrite (unsigned char data);
   void clk (int clockcount);
-  sdlsound (unsigned int rate, unsigned int buffersize, unsigned int samples,
-	    jvideo::hw &videohw);
-  ~sdlsound ();
+  sdlsound (unsigned int rate, unsigned int buffersize, unsigned int samples, jvideo::hw& videohw);
+  ~sdlsound();
   void out8253 (unsigned int addr, unsigned int val);
   unsigned int in8253 (unsigned int addr);
-  bool gettimer2out ();
+  bool gettimer2out();
   void set8255b (unsigned int val);
   void selecttimer1in (bool timer0out);
 };

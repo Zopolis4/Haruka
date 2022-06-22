@@ -5,16 +5,16 @@
 
 class jmem
 {
- private:
-  unsigned char *mem;
+private:
+  unsigned char* mem;
   int size;
- public:
+
+public:
   jmem (int memsize);
-  ~jmem ();
+  ~jmem();
   inline unsigned char read (int offset) { return mem[offset]; }
   inline void write (int offset, unsigned char data) { mem[offset] = data; }
-  void loadrom (int offset, const char *filename, int loadsize);
-  int loadrom2 (int offset, const char *filename, int maxloadsize);
-  void clearrom ();
+  void loadrom (int offset, const char* filename, int loadsize);
+  int loadrom2 (int offset, const char* filename, int maxloadsize);
+  void clearrom();
 };
-

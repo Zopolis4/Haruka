@@ -4,10 +4,11 @@
 class jrtc
 {
   struct rtc_data;
-  rtc_data *d;
+  rtc_data* d;
+
 public:
-  jrtc ();
-  ~jrtc ();
+  jrtc();
+  ~jrtc();
   void clk (unsigned int clockcount);
   unsigned int inb (unsigned int addr);
   void outb (unsigned int addr, unsigned int val);
