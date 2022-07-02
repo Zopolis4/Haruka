@@ -3,7 +3,7 @@
 
 #include "jrtc.h"
 
-#include <ctime>
+import <ctime>;
 
 // Real Time Clock (TIMDEV.SYS) support
 // Port 0x360 Second  1

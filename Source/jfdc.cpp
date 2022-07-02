@@ -3,8 +3,8 @@
 
 #include "jfdc.h"
 
-#include <cctype>
-#include <cstdio>
+import <cctype>;
+import <cstdio>;
 
 #include "8259a.h"
 

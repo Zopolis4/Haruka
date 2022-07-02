@@ -4,10 +4,24 @@ This is an IBM JX emulator.
 
 Default is JX mode which is for Japanese JX emulation. Original PCjr mode is expected to be similar to JX of Australian and New Zealand models.
 
-## Environment ##
+## Building ##
 
-* GNU/Linux
-* SDL
+```
+mkdir Build
+cd Build
+cmake ..
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header cctype
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header cmath
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header cstdio
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header cstdlib
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header cstring
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header ctime
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header fstream
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header iomanip
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header iostream
+g++ -std=gnu++20 -fmodules-ts -xc++-system-header sstream
+make
+```
 
 ## ROM Images (JX Mode, Japanese) ##
 
@@ -54,15 +68,6 @@ Raw image is supported.
 * Contents: raw image of 1024 byte sectors in that track (cylinder and head)
 
 For example, the original image name is "King's Quest.FDD" and cylinder 0 head 1 contains 5 1024-byte-sectors, the 5120 byte data will be loaded from file "King's Quest.FDD.001".
-
-## Build ##
-
-```
-mkdir Build
-cd Build
-cmake ..
-make
-```
 
 ## Run ##
 

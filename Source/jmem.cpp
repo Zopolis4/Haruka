@@ -3,7 +3,7 @@
 
 #include "jmem.h"
 
-#include <fstream>
+import <fstream>;
 
 jmem::jmem (int memsize)
 {

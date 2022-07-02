@@ -3,8 +3,8 @@
 
 #include "jvideo.h"
 
-#include <cstring>
-#include <iostream>
+import <cstring>;
+import <iostream>;
 
 #include "8259a.h"
 #include "jtype.h"

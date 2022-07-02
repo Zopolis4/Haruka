@@ -5,7 +5,7 @@ typedef unsigned int u32;
 
 #include "8088.h"
 
-#include <cstdio>
+import <cstdio>;
 
 #include "8259a.h"
 

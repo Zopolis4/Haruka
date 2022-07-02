@@ -3,11 +3,11 @@
 
 #include "stdfdc.h"
 
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
+import <cstdlib>;
+import <cstring>;
+import <fstream>;
+import <iomanip>;
+import <sstream>;
 
 stdfdc::stdfdc (jvideo& d) : jfdc (d)
 {

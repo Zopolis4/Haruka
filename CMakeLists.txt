@@ -4,6 +4,8 @@ project(5511emu LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
+add_compile_options(-fmodules-ts)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
 

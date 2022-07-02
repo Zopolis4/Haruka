@@ -29,7 +29,7 @@
 
 /* 8259A - Programmable Interrupt Controller */
 
-#include <cstdio>
+import <cstdio>;
 
 #define WARN8259(a) fprintf (stderr, "8259A: WARNING: %s\n", a)
 

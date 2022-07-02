@@ -3,10 +3,10 @@
 
 #include "sdlsound.h"
 
-#include <cmath>
-#include <cstdio>
-#include <fstream>
-#include <iostream>
+import <cmath>;
+import <cstdio>;
+import <fstream>;
+import <iostream>;
 
 #include "8259a.h"
 
