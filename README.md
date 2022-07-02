@@ -1,10 +1,10 @@
-# 5511emu #
+# 5511emu
 
 This is an IBM JX emulator.
 
 Default is JX mode which is for Japanese JX emulation. Original PCjr mode is expected to be similar to JX of Australian and New Zealand models.
 
-## Building ##
+## Building
 
 ```
 mkdir Build
@@ -23,7 +23,7 @@ g++ -std=gnu++20 -fmodules-ts -xc++-system-header sstream
 make
 ```
 
-## ROM Images (JX Mode, Japanese) ##
+## ROM Images (JX Mode, Japanese)
 
 This program loads following ROM image files from current working directory.
 
@@ -39,13 +39,13 @@ This program loads following ROM image files if -j option is specified.
 * PCJR_E.ROM : PCjr cartridge E0000h-EFFFFh
 * PCJR_F.ROM : PCjr cartridge F0000h-FFFFFh
 
-## ROM Image (Original PCjr Mode) ##
+## ROM Image (Original PCjr Mode)
 
 This program loads the following ROM image file from current working directory in original PCjr mode.
 
 * bios.rom : F0000h-FFFFFh
 
-## ROM Image (Cartridges) ##
+## ROM Image (Cartridges)
 
 Cartridge ROM image can be loaded with -d0, -d8, -e0, -e8, -f0 or -f8 option. The option name means starting address:
 
@@ -58,7 +58,7 @@ Cartridge ROM image can be loaded with -d0, -d8, -e0, -e8, -f0 or -f8 option. Th
 
 Maximum ROM image size is 96KiB.
 
-## Floppy disk images ##
+## Floppy disk images
 
 Raw image is supported.
 
@@ -69,7 +69,7 @@ Raw image is supported.
 
 For example, the original image name is "King's Quest.FDD" and cylinder 0 head 1 contains 5 1024-byte-sectors, the 5120 byte data will be loaded from file "King's Quest.FDD.001".
 
-## Run ##
+## Run
 
 Run 5511emu.
 
@@ -79,7 +79,7 @@ Run 5511emu.
 ./5511emu [-w] [-j] [-o] [-e] [-f] [-s] [-m RAM-size] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
-### Options ###
+### Options
 
 * -w: warm boot
 * -j: PCjr cartridge
@@ -100,11 +100,11 @@ Run 5511emu.
 * -f0 cartridge-f0: Load cartridge image from address F0000h
 * -f8 cartridge-f8: Load cartridge image from address F8000h
 
-### Note ###
+### Note
 
 Default RAM size is 640KiB for original PCjr mode or 512KiB. Please note that the main and 64KB memory expansion RAM which is also used as VRAM is slower than 128K memory expansion RAM. If the fast memory is located at the lowest memory address, memory size difference may cause program execution speed difference. In PCjr mode the slow memory is always located at the lowest memory address.
 
-## Limitations ##
+## Limitations
 
 * The RAM size 64KiB option (-m 64) just sets the 8255 PC3 bit. It does not hide the 128KiB RAM.
 * Floppy disk images cannot be changed while the emulator is running.
