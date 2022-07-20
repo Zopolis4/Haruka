@@ -911,7 +911,7 @@ int main (int argc, char** argv)
     return 1;
   }
   atexit (SDL_Quit);
-  md.window = SDL_CreateWindow ("5511emu", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+  md.window = SDL_CreateWindow ("Haruka", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                 exsize ? 752 : 672, exsize ? 557 : 432, SDL_WINDOW_RESIZABLE);
 
   jkey keybd;

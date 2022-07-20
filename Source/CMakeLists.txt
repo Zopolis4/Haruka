@@ -1,4 +1,4 @@
-target_sources(5511emu PRIVATE
+target_sources(Haruka PRIVATE
   8088.cpp
   8088.h
   8259a.cpp

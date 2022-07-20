@@ -1,4 +1,4 @@
-# 5511emu
+# Haruka
 
 This is an IBM JX emulator.
 
@@ -71,12 +71,12 @@ For example, the original image name is "King's Quest.FDD" and cylinder 0 head 1
 
 ## Run
 
-Run 5511emu.
+Run Haruka.
 
 ```
 #!sh
 
-./5511emu [-w] [-j] [-o] [-e] [-f] [-s] [-m RAM-size] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
+./Haruka [-w] [-j] [-o] [-e] [-f] [-s] [-m RAM-size] [-d0 cartridge-d0] [-d8 cartridge-d8] [-e0 cartridge-e0] [-e8 cartridge-e8] [-f0 cartridge-f0] [-f8 cartridge-f8] [A drive image [B drive image [C drive image [D drive image]]]]
 ```
 
 ### Options
