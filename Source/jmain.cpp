@@ -4,6 +4,8 @@
 import <iomanip>;
 import <iostream>;
 
+import RTC;
+
 #include "SDL.h"
 
 #include "8088.h"
@@ -15,7 +17,6 @@ import <iostream>;
 #include "jjoy.h"
 #include "jkey.h"
 #include "jmem.h"
-#include "jrtc.h"
 #include "jtype.h"
 #include "jvideo.h"
 #include "sdlsound.h"
@@ -536,10 +537,9 @@ public:
 
 class devrtc : public jbus::io
 {
-  jrtc& rtc;
 
 public:
-  devrtc (jbus& bus, jrtc& rtc) : io (bus), rtc (rtc)
+  devrtc (jbus& bus) : io (bus)
   {
     set_memory_iobmp (0);
     set_ioport_iobmp (0x0040);
@@ -548,7 +548,7 @@ public:
   {
     cycles = 6;
     if ((addr & 0xfff0) == 0x360)
-      val = rtc.inb (addr);
+      val = RTC::inb (addr);
     if (false && (addr & 0xfff0) == 0x360)
       std::cerr << "RTC Read " << std::hex << addr << ',' << val << std::endl;
   }
@@ -556,7 +556,7 @@ public:
   {
     cycles = 6;
     if ((addr & 0xfff0) == 0x360)
-      rtc.outb (addr, val);
+      RTC::outb (addr, val);
     if (false && (addr & 0xfff0) == 0x360)
       std::cerr << "RTC Write " << std::hex << addr << ',' << val << std::endl;
   }
@@ -605,7 +605,6 @@ int sdlmainthread (void* p)
     jvideo videoclass (videohw, program, kanjirom);
     jjoy joy;
     stdfdc fdc (videoclass);
-    jrtc rtc;
     devrom d_irom7 (bus, jio1ffdev::conf (0x00, 0203, 0003, 0074, 0040), systemrom, 0, 0x1ffff);
     devrom d_erom2 (bus, jio1ffdev::conf (0x01, 0357, 0157, 0020, 0000), cartrom, 32768 * 0,
                     0x7fff);  // Writable?
@@ -648,7 +647,7 @@ int sdlmainthread (void* p)
     devmfg d_mfg (bus);
     jio1ffstatus d_1ff (bus);
     devexmem d_exmem (bus, mainram, videoclass, md->memsize > 128 ? (md->memsize - 128) * 1024 : 0);
-    devrtc d_rtc (bus, rtc);
+    devrtc d_rtc (bus);
 
     md->fdc = &fdc;
     {
@@ -806,7 +805,7 @@ int sdlmainthread (void* p)
       joy.clk (clk);
       soundclass.clk (clk);
       fdc.clk (clk);
-      rtc.clk (clk);
+      RTC::clk (clk);
       if (nmiflag)
         nmi8088 (1);
     }

@@ -1,4 +1,6 @@
 target_sources(Haruka PRIVATE
+  # RTC has to be compiled first lest jmain.cpp fails to import it
+  RTC.cpp
   8088.cpp
   8088.h
   8259a.cpp
@@ -18,8 +20,6 @@ target_sources(Haruka PRIVATE
   jmain.cpp
   jmem.cpp
   jmem.h
-  jrtc.cpp
-  jrtc.h
   jtype.h
   jvideo.cpp
   jvideo.h
