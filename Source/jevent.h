@@ -4,7 +4,6 @@
 #include "SDL.h"
 
 #include "jkey.h"
-#include "jtype.h"
 
 class jevent
 {
