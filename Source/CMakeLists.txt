@@ -1,14 +1,13 @@
 target_sources(Haruka PRIVATE
   # RTC has to be compiled first lest jmain.cpp fails to import it
   RTC.cpp
+  SDLEvent.cpp
   8088.cpp
   8088.h
   8259a.cpp
   8259a.h
   jbus.cpp
   jbus.h
-  jevent.cpp
-  jevent.h
   jfdc.cpp
   jfdc.h
   jio1ff.cpp

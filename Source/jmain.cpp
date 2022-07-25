@@ -5,13 +5,13 @@ import <iomanip>;
 import <iostream>;
 
 import RTC;
+import SDLEvent;
 
 #include "SDL.h"
 
 #include "8088.h"
 #include "8259a.h"
 #include "jbus.h"
-#include "jevent.h"
 #include "jfdc.h"
 #include "jio1ff.h"
 #include "jjoy.h"
@@ -66,7 +66,6 @@ struct maindata
   int memsize;
   char* cart[6];  // D0, D8, E0, E8, F0, F8
   char* fdfile[4];
-  jevent* event;
   jkey* keybd;
   SDL_Window* window;
 };
@@ -818,7 +817,7 @@ int sdlmainthread (void* p)
   {
     std::cerr << "ERROR" << std::endl;
   }
-  md->event->push_quit_event();
+  SDLEvent::PushQuitEvent();
   return 0;
 }
 
@@ -914,14 +913,12 @@ int main (int argc, char** argv)
                                 exsize ? 752 : 672, exsize ? 557 : 432, SDL_WINDOW_RESIZABLE);
 
   jkey keybd;
-  jevent event (keybd);
   md.keybd = &keybd;
-  md.event = &event;
 
   SDL_Thread* thread = SDL_CreateThread (sdlmainthread, "main", &md);
 
-  while (!event.get_quit_flag())
-    event.handle_event();
+  while (!SDLEvent::QuitFlag())
+    SDLEvent::HandleEvent();
 
   md.endflag = 1;
   int status;
