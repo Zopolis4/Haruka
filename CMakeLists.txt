@@ -4,7 +4,9 @@ project(Haruka LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_compile_options(-fmodules-ts)
+if (CMAKE_CXX_COMPILER_ID MATCHES GNU)
+  add_compile_options(-fmodules-ts)
+endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
